@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "dailyRep",
+    "slug": "dailyrep",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.catanddogmiaomiao.dailyrep",
+      "infoPlist": {
+        "NSCameraUsageDescription": "拍摄运动打卡照片",
+        "NSPhotoLibraryUsageDescription": "选择运动打卡照片"
+      },
+      "icon": "./assets/icon.png"
+    },
+    "android": {
+      "package": "com.catanddogmiaomiao.dailyrep",
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "选择运动打卡照片",
+          "cameraPermission": "拍摄运动打卡照片"
+        }
+      ],
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1F2A44"
+    }
+  }
+}
