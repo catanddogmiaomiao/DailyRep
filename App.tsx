@@ -74,6 +74,8 @@ function App() {
     [error, setError] = useState(""),
     [photo, setPhoto] = useState<string | null>(null);
   const generation = useRef(0);
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => { scrollRef.current?.scrollTo({y: 0, animated: false}); }, [page, token]);
   async function api(route: string, options: RequestInit = {}, auth = token) {
     if (!API) throw new Error("请先在 .env 中配置 EXPO_PUBLIC_API_URL");
     const res = await fetch(API + "/api" + route, {
@@ -170,6 +172,7 @@ function App() {
     <SafeAreaView style={s.container} edges={["top", "bottom"]}>
       <StatusBar style="light" />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={s.content}
         refreshControl={
           <RefreshControl
