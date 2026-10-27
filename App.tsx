@@ -52,15 +52,19 @@ const API = (process.env.EXPO_PUBLIC_API_URL || "").replace(/\/$/, "");
 const fmt = (n: number) => Number(n.toFixed(2)).toLocaleString("zh-CN");
 function Fade() {
   return (
-    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-      <Defs>
-        <LinearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#132138" stopOpacity=".18" />
-          <Stop offset="1" stopColor="#132138" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Rect width="100%" height="100%" fill="url(#fade)" />
-    </Svg>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id="fade" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#132138" stopOpacity=".12" />
+            <Stop offset="45%" stopColor="#132138" stopOpacity=".28" />
+            <Stop offset="75%" stopColor="#132138" stopOpacity=".78" />
+            <Stop offset="100%" stopColor="#132138" stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width={100} height={100} fill="url(#fade)" />
+      </Svg>
+    </View>
   );
 }
 function App() {
@@ -200,6 +204,8 @@ function App() {
               <Pressable
                 accessibilityLabel="返回首页"
                 onPress={() => go("home")}
+                accessibilityRole="button"
+                hitSlop={8}
                 style={s.iconBtn}
               >
                 <Ionicons name="chevron-back" color="#e8dcc8" size={23} />
@@ -233,6 +239,8 @@ function App() {
                   },
                 ])
               }
+              accessibilityRole="button"
+              hitSlop={8}
               style={s.iconBtn}
             >
               <Ionicons name="log-out-outline" size={22} color="#e8dcc8" />
@@ -338,6 +346,8 @@ function App() {
               <View style={[s.row, { marginVertical: 20 }]}>
                 <Pressable
                   accessibilityLabel="上一周期"
+                  accessibilityRole="button"
+                  hitSlop={8}
                   style={s.iconBtn}
                   onPress={() => setAnchor(movePeriod(anchor, period, -1))}
                 >
@@ -363,6 +373,8 @@ function App() {
                 </Text>
                 <Pressable
                   accessibilityLabel="下一周期"
+                  accessibilityRole="button"
+                  hitSlop={8}
                   style={s.iconBtn}
                   onPress={() => setAnchor(movePeriod(anchor, period, 1))}
                 >
@@ -429,6 +441,8 @@ function App() {
                     </View>
                     {r.photo && (
                       <Pressable
+                        accessibilityRole="button"
+                        hitSlop={0}
                         style={s.iconBtn}
                         accessibilityLabel="查看照片"
                         onPress={() => setPhoto(r.photo)}
@@ -442,6 +456,8 @@ function App() {
                     )}
                     <Pressable
                       accessibilityLabel="删除记录"
+                      accessibilityRole="button"
+                      hitSlop={0}
                       style={s.iconBtn}
                       onPress={() =>
                         Alert.alert("删除记录", "同时删除这次打卡的照片？", [
@@ -495,7 +511,7 @@ function App() {
         onRequestClose={() => setPhoto(null)}
       >
         <SafeAreaView style={s.photoModal}>
-          <Pressable onPress={() => setPhoto(null)} style={s.photoClose}>
+          <Pressable accessibilityRole="button" accessibilityLabel="关闭照片" hitSlop={8} onPress={() => setPhoto(null)} style={[s.iconBtn, s.photoClose]}>
             <Ionicons name="close" size={30} color="#e8dcc8" />
           </Pressable>
           {photo && (
@@ -549,11 +565,11 @@ function Login({
         <ScrollView keyboardShouldPersistTaps="handled">
           <ImageBackground
             source={require("./assets/coast.jpg")}
-            style={[s.hero, { height: 310 }]}
+            style={[s.hero, { height: 310, marginHorizontal: 0 }]}
           >
             <Fade />
             <Text style={[s.brand, { marginBottom: 35 }]}>≋ dailyRep</Text>
-            <Text style={s.title}>每一次坚持，\n都有回响。</Text>
+            <Text style={s.title}>{"每一次坚持，\n都有回响。"}</Text>
             <Text style={s.subtitle}>一片只属于你的运动空间。</Text>
           </ImageBackground>
           <View style={{ padding: 28 }}>
@@ -835,11 +851,11 @@ function Checkin({
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View style={s.formHeader}>
-            <Pressable disabled={busy} onPress={onClose}>
+            <Pressable accessibilityRole="button" accessibilityLabel="关闭打卡窗口" hitSlop={8} style={s.textAction} disabled={busy} onPress={onClose}>
               <Text style={s.muted}>取消</Text>
             </Pressable>
             <Text style={s.sportName}>{sp.name}打卡</Text>
-            <View style={{ width: 30 }} />
+            <View style={{ width: 48 }} />
           </View>
           <ScrollView
             contentContainerStyle={{ padding: 24 }}
@@ -848,12 +864,12 @@ function Checkin({
             <View style={s.formBeige}>
               <Text style={s.darkLabel}>运动时间</Text>
               <View style={[s.row, { marginTop: 16 }]}>
-                <Pressable onPress={() => setPicker("date")}>
+                <Pressable accessibilityRole="button" hitSlop={4} style={s.textAction} onPress={() => setPicker("date")}>
                   <Text style={s.darkLabel}>
                     ▦ {time.toLocaleDateString("zh-CN")}
                   </Text>
                 </Pressable>
-                <Pressable onPress={() => setPicker("time")}>
+                <Pressable accessibilityRole="button" hitSlop={4} style={s.textAction} onPress={() => setPicker("time")}>
                   <Text style={s.darkLabel}>
                     {time.toLocaleTimeString("zh-CN", {
                       hour: "2-digit",
@@ -870,7 +886,9 @@ function Checkin({
               <View>
                 {Platform.OS === "ios" && (
                   <Pressable
-                    style={{ alignSelf: "flex-end", padding: 10 }}
+                    accessibilityRole="button"
+                    hitSlop={8}
+                    style={[s.textAction, {alignSelf: "flex-end"}]}
                     onPress={() => setPicker(null)}
                   >
                     <Text style={{ color: "#c6a75e" }}>完成</Text>
@@ -953,7 +971,7 @@ function Checkin({
                   source={{ uri: photo.uri }}
                   style={{ width: 180, height: 130, borderRadius: 12 }}
                 />
-                <Pressable onPress={() => setPhoto(null)}>
+                <Pressable accessibilityRole="button" hitSlop={8} style={[s.textAction, {alignSelf: 'flex-start'}]} onPress={() => setPhoto(null)}>
                   <Text style={[s.small, { marginTop: 10 }]}>移除照片</Text>
                 </Pressable>
               </View>
@@ -992,14 +1010,15 @@ const s = StyleSheet.create({
     height: 280,
     justifyContent: "flex-end",
     marginBottom: 8,
+    overflow: "hidden",
   },
   topline: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     position: "absolute",
-    left: 22,
-    right: 20,
+    left: 16,
+    right: 16,
     top: 10,
     zIndex: 2,
   },
@@ -1018,7 +1037,21 @@ const s = StyleSheet.create({
     letterSpacing: 1,
   },
   subtitle: { color: "#d7d4ce", fontSize: 12, marginTop: 12 },
-  iconBtn: { padding: 10 },
+  iconBtn: {
+    width: 48,
+    height: 48,
+    padding: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 24,
+  },
+  textAction: {
+    minWidth: 48,
+    minHeight: 48,
+    paddingHorizontal: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -1197,7 +1230,7 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   photoModal: { flex: 1, backgroundColor: "#080f1d" },
-  photoClose: { alignSelf: "flex-end", padding: 22 },
+  photoClose: { alignSelf: "flex-end", marginTop: 8, marginRight: 16, marginBottom: 8 },
 });
 export default function Root() {
   return (
