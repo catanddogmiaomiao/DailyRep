@@ -57,3 +57,15 @@ npx eas-cli build --platform ios --profile production
 源码已配置 iPhone 设备目标（不启用iPad），相机／照片用途说明，系统安全区及原生日期时间选择。Expo Go 用于开发预览；正式安装包需由你的 Apple Developer 账号签名。TestFlight 分发需 Apple Developer Program、App Store Connect App 和对应签名凭据。仓库不收集或保存这些凭据。
 
 iPhone 图标为完整不透明方形画布，系统自动裁切圆角；资源放在 `assets/icon.png` 并由 `app.json` 引用。
+
+## 使用 Xcode 直接安装到自己的 iPhone
+
+1. 安装完整 Xcode 和 CocoaPods（`brew install cocoapods`），安装 JavaScript 依赖并配置 `.env` 的后端地址。
+2. 执行 `npx expo prebuild --platform ios --no-install`，再进入 `ios` 执行 `pod install`。Maven Central 下载不稳定时，可临时用 `ENTERPRISE_REPOSITORY=https://maven-central.storage-download.googleapis.com/maven2 pod install`。这是 [Google 文档提供的 Maven Central 镜像地址](https://docs.cloud.google.com/docs/buildpacks/java#google_cloud_hosted_maven_central_mirror)。
+3. 用 Xcode 打开 `ios/dailyRep.xcworkspace`，不要打开单独的 `.xcodeproj`。
+4. 连接并解锁 iPhone，在 Xcode 的 Apple Accounts 登录自己的账号，在 Signing & Capabilities 选择自己的 Team。普通 Apple 账号可使用 Personal Team。
+5. 若要脱离 Metro 开发服务独立启动，在 Product → Scheme → Edit Scheme → Run 中将 Build Configuration 设为 Release，然后选择真机点击 Run。
+
+项目已通过 Xcode27.1 / iPhoneOS27.1 SDK 的 Release 原生编译（未签名）。`plugins/withIosMinimumTarget.cjs` 会在生成 Podfile 时，将旧依赖资源包的最低目标统一到至少iOS15.1，兼容当前 Xcode；不修改第三方包源码。
+
+签名、开发者模式与真机相机／相册仍需用户在自己的设备和账号下验收。安装后登录还需要已经启动的后端及正确的 `EXPO_PUBLIC_API_URL`。

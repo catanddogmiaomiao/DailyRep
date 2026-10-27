@@ -29,7 +29,8 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "./plugins/withIosMinimumTarget.cjs"
     ],
     "icon": "./assets/icon.png",
     "splash": {

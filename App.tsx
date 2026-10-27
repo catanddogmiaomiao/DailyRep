@@ -77,14 +77,19 @@ function App() {
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({y: 0, animated: false}); }, [page, token]);
   async function api(route: string, options: RequestInit = {}, auth = token) {
-    if (!API) throw new Error("请先在 .env 中配置 EXPO_PUBLIC_API_URL");
-    const res = await fetch(API + "/api" + route, {
+    if (!API) throw new Error("服务地址尚未配置，请更新到已连接服务的新版本");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let res: Response;
+    try { res = await fetch(API + "/api" + route, {
       ...options,
+      signal: controller.signal,
       headers: {
         ...options.headers,
         ...(auth ? { Authorization: "Bearer " + auth } : {}),
       },
-    });
+    }); } catch { throw new Error("暂时无法连接服务，请检查网络后重试"); }
+    finally { clearTimeout(timeout); }
     if (!res.ok) {
       const data = await res.json().catch(() => ({ error: "网络请求失败" }));
       const err = Object.assign(new Error(data.error || "请求失败"), {
@@ -148,13 +153,13 @@ function App() {
     return (
       <Login
         error={error}
-        onLogin={async (mail, password) => {
+        onLogin={async (mail, password, registration) => {
           const data = await api(
-            "/login",
+            registration ? "/register" : "/login",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: mail, password }),
+              body: JSON.stringify({ email: mail, password, ...registration }),
             },
             null,
           );
@@ -511,13 +516,27 @@ function Login({
   onLogin,
   error,
 }: {
-  onLogin: (email: string, password: string) => Promise<void>;
+  onLogin: (email: string, password: string, registration?: {setupCode: string}) => Promise<void>;
   error: string;
 }) {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false),
-    [err, setErr] = useState("");
+    [err, setErr] = useState(""),
+    [register, setRegister] = useState(false),
+    [confirmPassword, setConfirmPassword] = useState(""),
+    [setupCode, setSetupCode] = useState(""),
+    [registrationAvailable, setRegistrationAvailable] = useState(false);
+  useEffect(() => {
+    if (!API) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    fetch(API + '/api/setup', {signal: controller.signal})
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setRegistrationAvailable(!!data?.registrationAvailable))
+      .catch(() => {}).finally(() => clearTimeout(timer));
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, []);
   return (
     <SafeAreaView style={s.container}>
       <StatusBar style="light" />
@@ -536,8 +555,8 @@ function Login({
             <Text style={s.subtitle}>一片只属于你的运动空间。</Text>
           </ImageBackground>
           <View style={{ padding: 28 }}>
-            <Text style={[s.sectionTitle, { marginTop: 0 }]}>欢迎回来</Text>
-            <Text style={s.muted}>登录后查看你的个人运动记录</Text>
+            <Text style={[s.sectionTitle, { marginTop: 0 }]}>{register ? '创建个人账号' : '欢迎回来'}</Text>
+            <Text style={s.muted}>{register ? '注册后开始记录你的第一场运动' : '登录后查看你的个人运动记录'}</Text>
             <Text style={s.fieldLabel}>邮箱</Text>
             <TextInput
               accessibilityLabel="邮箱"
@@ -558,10 +577,17 @@ function Login({
               onChangeText={setPassword}
               secureTextEntry
               autoCapitalize="none"
-              autoComplete="current-password"
-              placeholder="输入密码"
+              autoComplete={register ? 'new-password' : 'current-password'}
+              maxLength={1024}
+              placeholder={register ? '设置密码，至少12位' : '输入密码'}
               placeholderTextColor="#7c899e"
             />
+            {register && <>
+              <Text style={s.fieldLabel}>确认密码</Text>
+              <TextInput accessibilityLabel="确认密码" style={s.loginInput} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry autoCapitalize="none" autoComplete="new-password" placeholder="再次输入密码" placeholderTextColor="#7c899e" />
+              <Text style={s.fieldLabel}>首次注册邀请码</Text>
+              <TextInput accessibilityLabel="首次注册邀请码" style={s.loginInput} value={setupCode} onChangeText={setSetupCode} secureTextEntry autoCapitalize="none" autoCorrect={false} placeholder="输入服务所有者的邀请码" placeholderTextColor="#7c899e" />
+            </>}
             {err || error ? <Text style={s.error}>{err || error}</Text> : null}
             <Pressable
               disabled={busy}
@@ -571,10 +597,14 @@ function Login({
                   setErr("请输入邮箱和密码");
                   return;
                 }
+                if (register && (password.length < 12 || password !== confirmPassword || !setupCode.trim())) {
+                  setErr('请设置至少12位密码，确认两次输入一致，并填写邀请码');
+                  return;
+                }
                 setBusy(true);
                 setErr("");
                 try {
-                  await onLogin(email.trim(), password);
+                  await onLogin(email.trim(), password, register ? {setupCode: setupCode.trim()} : undefined);
                 } catch (e: any) {
                   setErr(e.message);
                 } finally {
@@ -585,9 +615,12 @@ function Login({
               {busy ? (
                 <ActivityIndicator color="#1f2a44" />
               ) : (
-                <Text style={s.goldText}>登录查看数据</Text>
+                <Text style={s.goldText}>{register ? '注册并进入' : '登录查看数据'}</Text>
               )}
             </Pressable>
+            {(registrationAvailable || register) && <Pressable disabled={busy} onPress={() => {setRegister(!register); setErr('');}} style={{padding: 16, alignItems: 'center'}}>
+              <Text style={{color: '#c6a75e'}}>{register ? '已有账号？返回登录' : '首次使用？创建个人账号'}</Text>
+            </Pressable>}
             <Text style={s.footer}>个人账号 · 数据私密保存</Text>
           </View>
         </ScrollView>
