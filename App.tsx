@@ -20,6 +20,8 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as SecureStore from "expo-secure-store";
 import * as ImagePicker from "expo-image-picker";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { File } from "expo-file-system";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
@@ -716,11 +718,14 @@ function Checkin({
     [value, setValue] = useState(""),
     [minutes, setMinutes] = useState("30"),
     [seconds, setSeconds] = useState("0"),
-    [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null),
+    [photo, setPhoto] = useState<{uri: string} | null>(null),
+    [processingPhoto, setProcessingPhoto] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const sp = sports[sport];
   async function choose(camera: boolean) {
+    if (busy || processingPhoto) return;
+    setProcessingPhoto(true);
     try {
       const permission = camera
         ? await ImagePicker.requestCameraPermissionsAsync()
@@ -736,25 +741,45 @@ function Checkin({
       const result = camera
         ? await ImagePicker.launchCameraAsync({
             mediaTypes: ["images"],
-            quality: 0.75,
+            quality: 1,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ["images"],
-            quality: 0.75,
+            quality: 1,
           });
       if (!result.canceled) {
-        if ((result.assets[0].fileSize || 0) > 8 * 1024 * 1024) {
-          setError("照片不能超过8MB");
-          return;
+        const asset = result.assets[0];
+        const context = ImageManipulator.manipulate(asset.uri);
+        let image: Awaited<ReturnType<typeof context.renderAsync>> | undefined;
+        try {
+          // Decode the source (including HEIC) and actually encode a new JPEG.
+          // Limit the long edge without enlarging small photos or changing ratio.
+          if (Math.max(asset.width, asset.height) > 2400) {
+            context.resize(asset.width >= asset.height ? {width: 2400} : {height: 2400});
+          }
+          image = await context.renderAsync();
+          const converted = await image.saveAsync({format: SaveFormat.JPEG, compress: 0.82});
+          const file = new File(converted.uri);
+          if (!file.exists || !file.size) throw new Error("照片处理失败，请重新选择照片");
+          if (file.size > 8 * 1024 * 1024) {
+            file.delete();
+            throw new Error("照片处理后仍超过8MB，请选择较小的照片");
+          }
+          setPhoto({uri: converted.uri});
+          setError("");
+        } finally {
+          image?.release();
+          context.release();
         }
-        setPhoto(result.assets[0]);
-        setError("");
       }
-    } catch {
-      setError("无法打开相机或相册，请稍后重试。");
+    } catch (e: any) {
+      setError(e.message?.includes('照片') ? e.message : "无法处理这张照片，请确认照片已从 iCloud 下载后重试。");
+    } finally {
+      setProcessingPhoto(false);
     }
   }
   async function save() {
+    if (processingPhoto || busy) return;
     const v = Number(value),
       m = Number(minutes),
       sec = Number(seconds),
@@ -910,15 +935,18 @@ function Checkin({
               打卡照片 <Text style={s.small}>（可选 · 最大8MB）</Text>
             </Text>
             <View style={{ flexDirection: "row", gap: 12, marginTop: 14 }}>
-              <Pressable style={s.outline} onPress={() => choose(true)}>
+              <Pressable disabled={busy || processingPhoto} style={s.outline} onPress={() => choose(true)}>
                 <Ionicons name="camera-outline" size={20} color="#e8dcc8" />
                 <Text style={s.tabText}>拍照</Text>
               </Pressable>
-              <Pressable style={s.outline} onPress={() => choose(false)}>
+              <Pressable disabled={busy || processingPhoto} style={s.outline} onPress={() => choose(false)}>
                 <Ionicons name="image-outline" size={20} color="#e8dcc8" />
                 <Text style={s.tabText}>从相册选择</Text>
               </Pressable>
             </View>
+            {processingPhoto && <View style={[s.row, {gap: 8, marginTop: 16}]}>
+              <ActivityIndicator color="#c6a75e" /><Text style={s.small}>正在处理照片…</Text>
+            </View>}
             {photo && (
               <View style={{ marginTop: 16 }}>
                 <Image
@@ -932,9 +960,9 @@ function Checkin({
             )}
             {error ? <Text style={s.error}>{error}</Text> : null}
             <Pressable
-              disabled={busy}
+              disabled={busy || processingPhoto}
               onPress={save}
-              style={[s.gold, { marginTop: 30, opacity: busy ? 0.6 : 1 }]}
+              style={[s.gold, { marginTop: 30, opacity: busy || processingPhoto ? 0.6 : 1 }]}
             >
               {busy ? (
                 <ActivityIndicator color="#1f2a44" />

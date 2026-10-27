@@ -14,7 +14,9 @@
     "@expo/vector-icons": "^15.0.2",
     "@react-native-community/datetimepicker": "8.4.4",
     "expo": "~54.0.0",
+    "expo-file-system": "~19.0.24",
     "expo-font": "~14.0.12",
+    "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.8",
     "expo-secure-store": "~15.0.7",
     "expo-status-bar": "~3.0.8",
@@ -24,8 +26,8 @@
     "react-native-svg": "15.12.1"
   },
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "@types/react": "~19.1.10"
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
   },
   "type": "module"
 }

@@ -69,3 +69,7 @@ iPhone 图标为完整不透明方形画布，系统自动裁切圆角；资源�
 项目已通过 Xcode27.1 / iPhoneOS27.1 SDK 的 Release 原生编译（未签名）。`plugins/withIosMinimumTarget.cjs` 会在生成 Podfile 时，将旧依赖资源包的最低目标统一到至少iOS15.1，兼容当前 Xcode；不修改第三方包源码。
 
 签名、开发者模式与真机相机／相册仍需用户在自己的设备和账号下验收。安装后登录还需要已经启动的后端及正确的 `EXPO_PUBLIC_API_URL`。
+
+### iPhone照片兼容
+
+从相册或相机选择的照片先在设备本地转换成真实JPEG（包含HEIC来源），长边最多2400像素并保持比例。8MB上限按转换后文件计算；不会修改相册原图。新增原生依赖后，已有iOS工程需运行pod install并重新编译安装。

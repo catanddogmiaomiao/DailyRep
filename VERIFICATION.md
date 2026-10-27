@@ -39,3 +39,14 @@
 - App 登录页支持服务端开启时显示首次注册，填写邮箱、密码、确认密码与邀请码；请求15秒超时，连接失败显示可理解的错误。
 - 线上health/setup及未登录保护已验证；Safari实测网页登录和注册表单。
 - 类型检查及3项测试通过；含线上URL的新 iPhone arm64 Release 无签名构建通过。用户需在Xcode重新Run签名安装才会更新手机上的旧包。
+
+
+## 2026-10-27：iPhone相册照片上传
+
+- 根因：上传表单把所有图片标为JPEG，但相册可能返回PNG或HEIC原始内容。
+- 显式安装SDK54匹配的expo-image-manipulator 14.0.8与expo-file-system 19.0.24；选图后解码并保存真实JPEG，长边最多2400像素且保持比例，不放大小图，按转换后文件检查8MB限制。原始相册照片不修改。
+- 新增处理中提示，处理期间禁用重复选图和提交；失败显示可理解的照片错误。
+- 已核对ExpoModulesProvider注册ImageManipulatorModule；4项测试及TypeScript检查通过。
+- 后端真实Workers运行时已覆盖PNG被标成JPEG仍正确保存读取，以及伪造图片拒绝。后端修复已上线。
+- 当前未使用用户的私人照片进行真机验证；HEIC转换效果需用户更新后重新选择照片确认。
+- 含图片转换模块的iPhone arm64 Release无签名原生编译通过（BUILD SUCCEEDED）。

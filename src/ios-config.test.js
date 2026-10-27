@@ -25,3 +25,14 @@ test('icon library and Expo resolve one SDK-compatible native font module',()=>{
   assert.equal(fromExpo.resolve('expo-font/package.json'), fontPath);
   assert.equal(require(fontPath).version.split('.')[0], expected.match(/\d+/)[0]);
 });
+
+test('photo conversion native modules are explicit SDK-compatible dependencies',()=>{
+  const require = createRequire(import.meta.url);
+  const manifest = require('../package.json');
+  const versions = require('expo/bundledNativeModules.json');
+  const fromExpo = createRequire(require.resolve('expo/package.json'));
+  for (const name of ['expo-image-manipulator', 'expo-file-system']) {
+    assert.equal(manifest.dependencies[name], versions[name]);
+    assert.equal(fromExpo.resolve(name + '/package.json'), require.resolve(name + '/package.json'));
+  }
+});
