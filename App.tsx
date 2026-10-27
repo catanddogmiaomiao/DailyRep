@@ -579,7 +579,7 @@ function Login({
               autoCapitalize="none"
               autoComplete={register ? 'new-password' : 'current-password'}
               maxLength={1024}
-              placeholder={register ? '设置密码，至少12位' : '输入密码'}
+              placeholder={register ? '设置密码，至少8位' : '输入密码'}
               placeholderTextColor="#7c899e"
             />
             {register && <>
@@ -597,8 +597,8 @@ function Login({
                   setErr("请输入邮箱和密码");
                   return;
                 }
-                if (register && (password.length < 12 || password !== confirmPassword || !setupCode.trim())) {
-                  setErr('请设置至少12位密码，确认两次输入一致，并填写邀请码');
+                if (register && (password.length < 8 || password !== confirmPassword || !setupCode.trim())) {
+                  setErr('请设置至少8位密码，确认两次输入一致，并填写邀请码');
                   return;
                 }
                 setBusy(true);
