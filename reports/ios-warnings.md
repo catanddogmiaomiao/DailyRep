@@ -4,8 +4,8 @@
 
 | 项目 | 用户提供记录 | 最终完整构建 |
 | --- | ---: | ---: |
-| 带位置的警告 | 382 | 106 |
-| 按文件、行号与正文去重 | 215 | 106 |
+| 带位置的警告 | 110 | 75 |
+| 按文件、行号与正文去重 | 108 | 73 |
 | 空目标文件归档提示 | 21 | 21 |
 
 ## 剩余警告分类
@@ -14,42 +14,24 @@
 | --- | ---: |
 | method possibly missing a [super updateProps:oldProps:] call | 27 |
 | 'referenceURL' was deprecated in iOS 11.0: Will be removed in a future release, use PHPicker. | 4 |
-| 'UTTypeCreatePreferredIdentifierForTag' is deprecated: first deprecated in iOS 15.0 - Use the UTType class instead. | 3 |
-| 'kUTTagClassFilenameExtension' is deprecated: first deprecated in iOS 15.0 - Use UTTagClassFilenameExtension instead. | 3 |
-| 'kUTTypeImage' is deprecated: first deprecated in iOS 15.0 - Use UTTypeImage or UTType.image (swift) instead. | 3 |
-| 'UTTypeIsDynamic' is deprecated: first deprecated in iOS 15.0 - Use UTType.dynamic instead. | 3 |
 | 'fetchAssets(withALAssetURLs:options:)' was deprecated in iOS 11: Will be removed in a future release | 3 |
-| 'kUTTypeItem' was deprecated in iOS 15.0: Use UTTypeItem or UTType.item (swift) instead. | 3 |
 | 'application(_:performFetchWithCompletionHandler:)' was deprecated in iOS 13.0: Use a BGAppRefreshTask in the BackgroundTasks framework instead | 2 |
-| immutable value 'value' was never used; consider replacing with '_' or removing it | 2 |
 | 'Constants' is deprecated: Use `Constant` or `Property` instead | 2 |
-| 'kSecUseOperationPrompt' was deprecated in iOS 14.0: Use kSecUseAuthenticationContext and set LAContext.localizedReason property | 2 |
-| 'init(documentTypes:in:)' was deprecated in iOS 14.0 | 2 |
 | 'weak' ownership of capture 'self' differs from implicitly-captured strong reference in outer scope | 2 |
-| 'newArchEnabled()' is deprecated: Use RCTIsNewArchEnabled instead | 2 |
-| 'UTTypeConformsTo' is deprecated: first deprecated in iOS 15.0 - Use -[UTType conformsToType:] instead. | 1 |
-| 'CGColorSpaceCreateWithICCProfile' is deprecated: first deprecated in iOS 11.0 - No longer supported | 1 |
+| umbrella header for module 'SDWebImageWebPCoder' does not include header 'SDInternalMacros.h' | 2 |
+| umbrella header for module 'SDWebImageWebPCoder' does not include header 'SDmetamacros.h' | 2 |
 | auto property synthesis will not synthesize property 'hitTestEdgeInsets'; it will be implemented by its superclass, use @dynamic to acknowledge intention | 1 |
-| weak variable 'weakAppContext' was never mutated; consider changing to 'let' constant | 1 |
 | use '#selector' instead of explicitly constructing a 'Selector' | 1 |
 | conformance of 'URLProtocol' to 'Sendable' is unavailable in iOS; this is an error in the Swift 6 language mode | 1 |
-| coercion of implicitly unwrappable value of type 'Any?' to 'Any' does not unwrap optional | 1 |
 | category is implementing a method which will also be implemented by its primary class | 1 |
 | 'new' is deprecated: Expo modules are now being automatically registered. You can remove this method call. | 1 |
 | method definition for 'createClass:constructor:' not found | 1 |
-| null passed to a callee that requires a non-null argument | 1 |
 | 'keyWindow' is deprecated: first deprecated in iOS 13.0 - Should not be used for applications that support multiple scenes as it returns a key window across all connected scenes | 1 |
+| null passed to a callee that requires a non-null argument | 1 |
 | cannot find protocol definition for 'RCTBridgeModule' | 1 |
 | 'kSecAttrAccessibleAlways' was deprecated in iOS 12.0: Use an accessibility level that provides some user protection, such as kSecAttrAccessibleAfterFirstUnlock | 1 |
 | 'kSecAttrAccessibleAlwaysThisDeviceOnly' was deprecated in iOS 12.0: Use an accessibility level that provides some user protection, such as kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly | 1 |
 | 'isStatusBarHidden' was deprecated in iOS 13.0: Use the statusBarManager property of the window scene instead. | 1 |
-| 'kUTTypeFolder' was deprecated in iOS 15.0: Use UTTypeFolder or UTType.folder (swift) instead. | 1 |
-| 'kUTTypeImage' was deprecated in iOS 15.0: Use UTTypeImage or UTType.image (swift) instead. | 1 |
-| 'kUTTypeVideo' was deprecated in iOS 15.0: Use UTTypeVideo or UTType.video (swift) instead. | 1 |
-| 'kUTTypeAudio' was deprecated in iOS 15.0: Use UTTypeAudio or UTType.audio (swift) instead. | 1 |
-| 'kUTTypeText' was deprecated in iOS 15.0: Use UTTypeText or UTType.text (swift) instead. | 1 |
-| 'UTTypeCreatePreferredIdentifierForTag' was deprecated in iOS 15.0: Use the UTType class instead. | 1 |
-| 'kUTTagClassMIMEType' was deprecated in iOS 15.0: Use UTTagClassMIMEType instead. | 1 |
 | reference to type 'JavaScriptRuntime' broken by a context change; 'JavaScriptRuntime' was expected to be in 'ExpoModulesCore', but now a candidate is found only in 'ExpoFileSystem' | 1 |
 | reference to type 'JavaScriptTypedArray' broken by a context change; 'JavaScriptTypedArray' was expected to be in 'ExpoModulesCore', but now a candidate is found only in 'ExpoFileSystem' | 1 |
 | reference to type 'RCTBridge' broken by a context change; 'RCTBridge' was expected to be in 'React', but now a candidate is found only in 'Expo' | 1 |
@@ -64,7 +46,6 @@
 | implementing deprecated method | 1 |
 | 'application:performFetchWithCompletionHandler:' is deprecated: first deprecated in iOS 13.0 - Use a BGAppRefreshTask in the BackgroundTasks framework instead | 1 |
 | cannot find protocol definition for 'EXAppDelegateSubscriberProtocol' | 1 |
-| unused variable 'APP_DEBUG' | 1 |
 | 'CC_MD5' is deprecated: first deprecated in iOS 13.0 - This function is cryptographically broken and should not be used in security contexts. Clients should migrate to SHA256 (or stronger). | 1 |
 | 'fetchAssetsWithALAssetURLs:options:' is deprecated: first deprecated in iOS 11 - Will be removed in a future release | 1 |
 | Direct call to eval(), but lexical scope is not supported. | 1 |
@@ -80,33 +61,9 @@
 - `<build>/main.jsbundle:11181` — Direct call to eval(), but lexical scope is not supported.
 - `<build>/main.jsbundle:62168` — the variable "VirtualViewMode" was not declared in arrow function "handleModeChange"
 - `<build>/main.jsbundle:62203` — the variable "VirtualViewRenderState" was not declared in function "VirtualView"
-- `ios/Pods/SDWebImage/SDWebImage/Core/NSData+ImageContentType.m:159` — 'UTTypeConformsTo' is deprecated: first deprecated in iOS 15.0 - Use -[UTType conformsToType:] instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageCacheDefine.m:89` — 'UTTypeCreatePreferredIdentifierForTag' is deprecated: first deprecated in iOS 15.0 - Use the UTType class instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageCacheDefine.m:89` — 'kUTTagClassFilenameExtension' is deprecated: first deprecated in iOS 15.0 - Use UTTagClassFilenameExtension instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageCacheDefine.m:89` — 'kUTTypeImage' is deprecated: first deprecated in iOS 15.0 - Use UTTypeImage or UTType.image (swift) instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageCacheDefine.m:91` — 'UTTypeIsDynamic' is deprecated: first deprecated in iOS 15.0 - Use UTType.dynamic instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOAnimatedCoder.m:652` — 'UTTypeCreatePreferredIdentifierForTag' is deprecated: first deprecated in iOS 15.0 - Use the UTType class instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOAnimatedCoder.m:652` — 'kUTTagClassFilenameExtension' is deprecated: first deprecated in iOS 15.0 - Use UTTagClassFilenameExtension instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOAnimatedCoder.m:652` — 'kUTTypeImage' is deprecated: first deprecated in iOS 15.0 - Use UTTypeImage or UTType.image (swift) instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOAnimatedCoder.m:654` — 'UTTypeIsDynamic' is deprecated: first deprecated in iOS 15.0 - Use UTType.dynamic instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOCoder.m:208` — 'UTTypeCreatePreferredIdentifierForTag' is deprecated: first deprecated in iOS 15.0 - Use the UTType class instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOCoder.m:208` — 'kUTTagClassFilenameExtension' is deprecated: first deprecated in iOS 15.0 - Use UTTagClassFilenameExtension instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOCoder.m:208` — 'kUTTypeImage' is deprecated: first deprecated in iOS 15.0 - Use UTTypeImage or UTType.image (swift) instead.
-- `ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOCoder.m:210` — 'UTTypeIsDynamic' is deprecated: first deprecated in iOS 15.0 - Use UTType.dynamic instead.
-- `ios/Pods/SDWebImageWebPCoder/SDWebImageWebPCoder/Classes/SDImageWebPCoder.m:673` — 'CGColorSpaceCreateWithICCProfile' is deprecated: first deprecated in iOS 11.0 - No longer supported
+- `ios/Pods/SDWebImageWebPCoder/SDWebImageWebPCoder/Module/SDWebImageWebPCoder.h:17` — umbrella header for module 'SDWebImageWebPCoder' does not include header 'SDInternalMacros.h'
+- `ios/Pods/SDWebImageWebPCoder/SDWebImageWebPCoder/Module/SDWebImageWebPCoder.h:17` — umbrella header for module 'SDWebImageWebPCoder' does not include header 'SDmetamacros.h'
 - `node_modules/@react-native-community/datetimepicker/ios/RNDateTimePickerManager.m:47` — category is implementing a method which will also be implemented by its primary class
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:115` — 'init(documentTypes:in:)' was deprecated in iOS 14.0
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:115` — 'kUTTypeFolder' was deprecated in iOS 15.0: Use UTTypeFolder or UTType.folder (swift) instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:145` — 'kUTTypeItem' was deprecated in iOS 15.0: Use UTTypeItem or UTType.item (swift) instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:147` — 'kUTTypeImage' was deprecated in iOS 15.0: Use UTTypeImage or UTType.image (swift) instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:149` — 'kUTTypeVideo' was deprecated in iOS 15.0: Use UTTypeVideo or UTType.video (swift) instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:151` — 'kUTTypeAudio' was deprecated in iOS 15.0: Use UTTypeAudio or UTType.audio (swift) instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:153` — 'kUTTypeText' was deprecated in iOS 15.0: Use UTTypeText or UTType.text (swift) instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:155` — 'UTTypeCreatePreferredIdentifierForTag' was deprecated in iOS 15.0: Use the UTType class instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:156` — 'kUTTagClassMIMEType' was deprecated in iOS 15.0: Use UTTagClassMIMEType instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:162` — 'kUTTypeItem' was deprecated in iOS 15.0: Use UTTypeItem or UTType.item (swift) instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:93` — 'kUTTypeItem' was deprecated in iOS 15.0: Use UTTypeItem or UTType.item (swift) instead.
-- `node_modules/expo-file-system/ios/FilePickingUtils.swift:96` — 'init(documentTypes:in:)' was deprecated in iOS 14.0
 - `node_modules/expo-file-system/ios/Legacy/EXFileSystemAssetLibraryHandler.m:117` — 'fetchAssetsWithALAssetURLs:options:' is deprecated: first deprecated in iOS 11 - Will be removed in a future release
 - `node_modules/expo-file-system/ios/Legacy/FileSystemLegacyModule.swift:187` — 'weak' ownership of capture 'self' differs from implicitly-captured strong reference in outer scope
 - `node_modules/expo-file-system/ios/Legacy/FileSystemLegacyModule.swift:215` — 'weak' ownership of capture 'self' differs from implicitly-captured strong reference in outer scope
@@ -121,22 +78,16 @@
 - `node_modules/expo-image-picker/ios/VideoUtils.swift:38` — 'referenceURL' was deprecated in iOS 11.0: Will be removed in a future release, use PHPicker.
 - `node_modules/expo-modules-core/ios/AppDelegates/ExpoAppDelegateSubscriberManager.swift:401` — 'application(_:performFetchWithCompletionHandler:)' was deprecated in iOS 13.0: Use a BGAppRefreshTask in the BackgroundTasks framework instead
 - `node_modules/expo-modules-core/ios/AppDelegates/ExpoAppDelegateSubscriberManager.swift:434` — 'application(_:performFetchWithCompletionHandler:)' was deprecated in iOS 13.0: Use a BGAppRefreshTask in the BackgroundTasks framework instead
-- `node_modules/expo-modules-core/ios/Core/Events/LegacyEventEmitterCompat.swift:27` — coercion of implicitly unwrappable value of type 'Any?' to 'Any' does not unwrap optional
 - `node_modules/expo-modules-core/ios/DevTools/ExpoRequestInterceptorProtocol.swift:9` — conformance of 'URLProtocol' to 'Sendable' is unavailable in iOS; this is an error in the Swift 6 language mode
-- `node_modules/expo-modules-core/ios/DevTools/ModuleDefinitionEncoder.swift:133` — immutable value 'value' was never used; consider replacing with '_' or removing it
-- `node_modules/expo-modules-core/ios/DevTools/ModuleDefinitionEncoder.swift:136` — immutable value 'value' was never used; consider replacing with '_' or removing it
-- `node_modules/expo-modules-core/ios/Fabric/ExpoFabricView.swift:168` — weak variable 'weakAppContext' was never mutated; consider changing to 'let' constant
-- `node_modules/expo-modules-core/ios/Fabric/ExpoFabricView.swift:195` — use '#selector' instead of explicitly constructing a 'Selector'
+- `node_modules/expo-modules-core/ios/Fabric/ExpoFabricView.swift:194` — use '#selector' instead of explicitly constructing a 'Selector'
 - `node_modules/expo-modules-core/ios/JSI/EXJavaScriptRuntime.mm:14` — method definition for 'createClass:constructor:' not found
 - `node_modules/expo-modules-core/ios/Legacy/EXUtilities.m:49` — 'keyWindow' is deprecated: first deprecated in iOS 13.0 - Should not be used for applications that support multiple scenes as it returns a key window across all connected scenes
 - `node_modules/expo-modules-core/ios/Legacy/ModuleRegistryAdapter/EXModuleRegistryHolderReactModule.h:7` — cannot find protocol definition for 'RCTBridgeModule'
 - `node_modules/expo-modules-core/ios/Legacy/NativeModulesProxy/EXNativeModulesProxy.mm:107` — 'new' is deprecated: Expo modules are now being automatically registered. You can remove this method call.
 - `node_modules/expo-modules-core/ios/Legacy/NativeModulesProxy/NativeModulesProxyModule.swift:9` — 'Constants' is deprecated: Use `Constant` or `Property` instead
 - `node_modules/expo-modules-core/ios/RCTComponentData+Privates.m:14` — null passed to a callee that requires a non-null argument
-- `node_modules/expo-secure-store/ios/SecureStoreModule.swift:134` — 'kSecUseOperationPrompt' was deprecated in iOS 14.0: Use kSecUseAuthenticationContext and set LAContext.localizedReason property
-- `node_modules/expo-secure-store/ios/SecureStoreModule.swift:153` — 'kSecUseOperationPrompt' was deprecated in iOS 14.0: Use kSecUseAuthenticationContext and set LAContext.localizedReason property
-- `node_modules/expo-secure-store/ios/SecureStoreModule.swift:201` — 'kSecAttrAccessibleAlways' was deprecated in iOS 12.0: Use an accessibility level that provides some user protection, such as kSecAttrAccessibleAfterFirstUnlock
-- `node_modules/expo-secure-store/ios/SecureStoreModule.swift:207` — 'kSecAttrAccessibleAlwaysThisDeviceOnly' was deprecated in iOS 12.0: Use an accessibility level that provides some user protection, such as kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+- `node_modules/expo-secure-store/ios/SecureStoreModule.swift:213` — 'kSecAttrAccessibleAlways' was deprecated in iOS 12.0: Use an accessibility level that provides some user protection, such as kSecAttrAccessibleAfterFirstUnlock
+- `node_modules/expo-secure-store/ios/SecureStoreModule.swift:219` — 'kSecAttrAccessibleAlwaysThisDeviceOnly' was deprecated in iOS 12.0: Use an accessibility level that provides some user protection, such as kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 - `node_modules/expo/ios/AppDelegates/EXAppDelegateWrapper.mm:11` — auto property synthesis will not synthesize property 'dependencyProvider' declared in protocol 'RCTReactNativeFactoryDelegate'
 - `node_modules/expo/ios/AppDelegates/EXAppDelegateWrapper.mm:11` — class 'EXAppDelegateWrapper' does not conform to protocols 'RCTJSRuntimeConfiguratorProtocol', 'RCTReactNativeFactoryDelegate', 'RCTUIConfiguratorProtocol', ...
 - `node_modules/expo/ios/AppDelegates/EXAppDelegateWrapper.mm:11` — implementing deprecated class
@@ -144,9 +95,6 @@
 - `node_modules/expo/ios/AppDelegates/EXAppDelegatesLoader.m:9` — cannot find protocol definition for 'EXAppDelegateSubscriberProtocol'
 - `node_modules/expo/ios/AppDelegates/EXLegacyAppDelegateWrapper.m:106` — 'application:performFetchWithCompletionHandler:' is deprecated: first deprecated in iOS 13.0 - Use a BGAppRefreshTask in the BackgroundTasks framework instead
 - `node_modules/expo/ios/AppDelegates/EXLegacyAppDelegateWrapper.m:78` — implementing deprecated method
-- `node_modules/expo/ios/AppDelegates/ExpoAppDelegate.swift:34` — 'newArchEnabled()' is deprecated: Use RCTIsNewArchEnabled instead
-- `node_modules/expo/ios/AppDelegates/ExpoReactNativeFactory.swift:45` — 'newArchEnabled()' is deprecated: Use RCTIsNewArchEnabled instead
-- `node_modules/expo/ios/EXAppDefinesLoader.m:13` — unused variable 'APP_DEBUG'
 - `node_modules/expo/node_modules/expo-constants/ios/ConstantsModule.swift:12` — 'Constants' is deprecated: Use `Constant` or `Property` instead
 - `node_modules/expo/node_modules/expo-constants/ios/EXConstantsService.m:20` — class 'EXConstantsService' does not conform to protocol 'EXConstantsInterface'
 - `node_modules/expo/node_modules/expo-constants/ios/EXConstantsService.m:20` — method definition for 'deviceYear' not found

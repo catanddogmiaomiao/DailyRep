@@ -416,11 +416,21 @@
     {
       "path": "node_modules/expo/ios/AppDelegates/ExpoAppDelegate.swift",
       "beforeSha256": "02d60c4848d2df3f76e160d60efde619a1e30f5c5b4ed64e75fbedd9a33ee14a",
-      "afterSha256": "d8893d261bc847613881c2bda6258ad39bd15a73538ff0d5eed8fc31d228ad88",
+      "afterSha256": "6bbe65f01f1ecc06e5c8df0449ac434e2946d4396a28f6f6386418bf360f8e69",
       "replacements": [
         {
           "before": "@preconcurrency ReactNativeFactoryProvider",
           "after": "ReactNativeFactoryProvider",
+          "count": 1
+        },
+        {
+          "before": "guard let delegate = self.factory?.delegate,",
+          "after": "guard self.factory?.delegate != nil,",
+          "count": 1
+        },
+        {
+          "before": "delegate.newArchEnabled()",
+          "after": "RCTIsNewArchEnabled()",
           "count": 1
         }
       ]
@@ -428,11 +438,16 @@
     {
       "path": "node_modules/expo/ios/AppDelegates/ExpoReactNativeFactory.swift",
       "beforeSha256": "a84c060d8ad4415906fd22588347a65271c7a2cd8cca7df5e004368714e852bb",
-      "afterSha256": "8e01b3b92090bc3a2f67243144858235142692db761efa295cbc0910229f5d3e",
+      "afterSha256": "9a16904aabc3a2f258b60af81289e1b81162c6b9bdfc80f6c74616aaaabc2f56",
       "replacements": [
         {
           "before": "guard let delegate = self.delegate else {",
           "after": "guard self.delegate != nil else {",
+          "count": 1
+        },
+        {
+          "before": "weakDelegate.newArchEnabled()",
+          "after": "RCTIsNewArchEnabled()",
           "count": 1
         }
       ]
@@ -583,11 +598,21 @@
     {
       "path": "ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOAnimatedCoder.m",
       "beforeSha256": "d5fa20828b6ef6b084a633b8e657a950807ba436061043f37c55b8a16972556e",
-      "afterSha256": "683dd7a43215caa779d3a2b501243d28cf57bb6e592e6b6205422a5a2ef58f1e",
+      "afterSha256": "545e7d181e024cf6bd9a26f7362dbaa54f90da1b3114ed777c11c7ffe967b511",
       "replacements": [
         {
           "before": "newAlphaInfo | byteOrderInfo",
           "after": "(CGBitmapInfo)newAlphaInfo | byteOrderInfo",
+          "count": 1
+        },
+        {
+          "before": "#import <CoreServices/CoreServices.h>",
+          "after": "#import <CoreServices/CoreServices.h>\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>",
+          "count": 1
+        },
+        {
+          "before": "            typeIdentifierHint = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtensionHint, kUTTypeImage);\n            // Ignore dynamic UTI\n            if (UTTypeIsDynamic((__bridge CFStringRef)typeIdentifierHint)) {\n                typeIdentifierHint = nil;\n            }",
+          "after": "            UTType *type = [UTType typeWithFilenameExtension:fileExtensionHint conformingToType:UTTypeImage];\n            // Preserve rejection of unregistered, dynamic image types.\n            typeIdentifierHint = type.isDynamic ? nil : type.identifier;",
           "count": 1
         }
       ]
@@ -612,7 +637,7 @@
     {
       "path": "ios/Pods/SDWebImageWebPCoder/SDWebImageWebPCoder/Classes/SDImageWebPCoder.m",
       "beforeSha256": "9f3f8f9ce252f4dcf899be236dd8e78ff0698fa871279d69dcc238df741c5ad4",
-      "afterSha256": "ad84d23419b8dfa7d7776bb30f7a302696503be3cc95ee764266dd3507a23169",
+      "afterSha256": "c30cadb7dd2e3bd0404ba76d5d4c106b8d0ffc237f2725a6f4979db97d8c42b9",
       "replacements": [
         {
           "before": "kCGBitmapByteOrderDefault | kCGImageAlphaPremultipliedLast",
@@ -628,6 +653,11 @@
           "before": "kCGImageAlphaNone | kCGBitmapByteOrderDefault",
           "after": "(CGBitmapInfo)kCGImageAlphaNone | kCGBitmapByteOrderDefault",
           "count": 1
+        },
+        {
+          "before": "            if (@available(iOS 10, tvOS 10, macOS 10.12, watchOS 3, *)) {\n                colorSpaceRef = CGColorSpaceCreateWithICCData((__bridge CFDataRef)profileData);\n            } else {\n                colorSpaceRef = CGColorSpaceCreateWithICCProfile((__bridge CFDataRef)profileData);\n            }",
+          "after": "            colorSpaceRef = CGColorSpaceCreateWithICCData((__bridge CFDataRef)profileData);",
+          "count": 1
         }
       ]
     },
@@ -639,6 +669,139 @@
         {
           "before": "#include <react/renderer/graphics/Geometry.h>",
           "after": "#include <react/renderer/graphics/Float.h>\n#include <react/renderer/graphics/Point.h>\n#include <react/renderer/graphics/Rect.h>\n#include <react/renderer/graphics/RectangleCorners.h>\n#include <react/renderer/graphics/RectangleEdges.h>\n#include <react/renderer/graphics/Size.h>\n#include <react/renderer/graphics/Vector.h>",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-file-system/ios/FilePickingUtils.swift",
+      "beforeSha256": "ccbe8548b33911437725eecc45106fd4ece2d6ba1cdde1c84861388050aec456",
+      "afterSha256": "ba41eb7c48ac429c6159470da0c3120652df5ede064c8c0a99b9e7c1026bd693",
+      "replacements": [
+        {
+          "before": "internal func createFilePicker(initialUri: URL?, mimeType: String?) -> UIDocumentPickerViewController {\n  if #available(iOS 14.0, *) {\n    let utTypes: [UTType]\n    if let mimeType = mimeType {\n      if let utType = UTType(mimeType: mimeType) {\n        utTypes = [utType]\n      } else {\n        utTypes = [UTType.item]\n      }\n    } else {\n      utTypes = [UTType.item]\n    }\n\n    let picker = UIDocumentPickerViewController(forOpeningContentTypes: utTypes, asCopy: true)\n\n    if let initialUri = initialUri {\n      picker.directoryURL = initialUri\n    }\n\n    return picker\n  }\n\n  let utiTypes: [String]\n  if let mimeType = mimeType {\n    utiTypes = [toUTI(mimeType: mimeType)]\n  } else {\n    utiTypes = [kUTTypeItem as String]\n  }\n\n  let picker = UIDocumentPickerViewController(documentTypes: utiTypes, in: .import)\n\n  if let initialUri = initialUri {\n    picker.directoryURL = initialUri\n  }\n\n  return picker\n}\n\ninternal func createDirectoryPicker(initialUri: URL?) -> UIDocumentPickerViewController {\n  if #available(iOS 14.0, *) {\n    // Use UTType.folder for directory access as per Apple's documentation\n    let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.folder], asCopy: false)\n    if let initialUri = initialUri {\n      picker.directoryURL = initialUri\n    }\n    return picker\n  }\n  // For iOS 13 and earlier, use kUTTypeFolder\n  let picker = UIDocumentPickerViewController(documentTypes: [kUTTypeFolder as String], in: .open)\n  if let initialUri = initialUri {\n    picker.directoryURL = initialUri\n  }\n  return picker\n}\n\n@available(iOS 14.0, *)\nprivate func toUTType(mimeType: String) -> UTType? {\n  switch mimeType {\n  case \"*/*\":\n    return UTType.item\n  case \"image/*\":\n    return UTType.image\n  case \"video/*\":\n    return UTType.movie\n  case \"audio/*\":\n    return UTType.audio\n  case \"text/*\":\n    return UTType.text\n  default:\n    return UTType(mimeType: mimeType)\n  }\n}\n\nprivate func toUTI(mimeType: String) -> String {\n  var uti: CFString\n\n  switch mimeType {\n  case \"*/*\":\n    uti = kUTTypeItem\n  case \"image/*\":\n    uti = kUTTypeImage\n  case \"video/*\":\n    uti = kUTTypeVideo\n  case \"audio/*\":\n    uti = kUTTypeAudio\n  case \"text/*\":\n    uti = kUTTypeText\n  default:\n    if let ref = UTTypeCreatePreferredIdentifierForTag(\n      kUTTagClassMIMEType,\n      mimeType as CFString,\n      nil\n    )?.takeRetainedValue() {\n      uti = ref\n    } else {\n      uti = kUTTypeItem\n    }\n  }\n  return uti as String\n}\n#endif\n",
+          "after": "internal func createFilePicker(initialUri: URL?, mimeType: String?) -> UIDocumentPickerViewController {\n  let types = mimeType.flatMap { UTType(mimeType: $0) }.map { [$0] } ?? [.item]\n  let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)\n  picker.directoryURL = initialUri\n  return picker\n}\n\ninternal func createDirectoryPicker(initialUri: URL?) -> UIDocumentPickerViewController {\n  let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder], asCopy: false)\n  picker.directoryURL = initialUri\n  return picker\n}\n#endif\n",
+          "count": 1
+        },
+        {
+          "before": "import MobileCoreServices\n",
+          "after": "",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo/ios/EXAppDefinesLoader.m",
+      "beforeSha256": "32798f2fdedcaadb4a94b2a05813e2a75017d612bb5ce251908e4fb830335b40",
+      "afterSha256": "bfc209521fb371a4bbac75fe471b08dacce2740057e045a97c10455e4f6022cd",
+      "replacements": [
+        {
+          "before": "  BOOL APP_DEBUG;\n",
+          "after": "",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/DevTools/ModuleDefinitionEncoder.swift",
+      "beforeSha256": "901b592f8ad60be34144924d99d010cd89ccbd496a74331733b42575f60c5f9d",
+      "afterSha256": "a155b3db348b1c310035d06a9ec08d12c793b984a5b998f71fdd22342b5523ca",
+      "replacements": [
+        {
+          "before": "case let value as Dictionary<String, Any>:",
+          "after": "case is Dictionary<String, Any>:",
+          "count": 1
+        },
+        {
+          "before": "case let value as Array<Any>:",
+          "after": "case is Array<Any>:",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Fabric/ExpoFabricView.swift",
+      "beforeSha256": "6ed94bf60dcfaa0a59c047f85c1e1cb159231de9eebbf2f96431ee66688f9557",
+      "afterSha256": "5d58fd0419599663f7734af932fa75358d849f52b11c28c4f08c494db2af212d",
+      "replacements": [
+        {
+          "before": "    weak var weakAppContext = appContext\n    let appContextBlock: @convention(block) () -> AppContext? = { weakAppContext }",
+          "after": "    let appContextBlock: @convention(block) () -> AppContext? = { [weak appContext] in appContext }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Core/Events/LegacyEventEmitterCompat.swift",
+      "beforeSha256": "b5ded6f29b3c579a9ceae07f77b12a5ff799464dd4c67250b27cdf6a75b0cd2b",
+      "afterSha256": "05bb2a531e51efcd7f57d4a065a179590f1d17fc17fcc286e4faf3efdd727b32",
+      "replacements": [
+        {
+          "before": "withArguments: [body]",
+          "after": "withArguments: [body ?? NSNull()]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-secure-store/ios/SecureStoreModule.swift",
+      "beforeSha256": "971774ffbd6f3351c28bd7487184e74ae12edca1c20d9e52709d4b154746c741",
+      "afterSha256": "80ef3df1d673e524fc28d9eb59582ec9b626e10135751eefff12818e07541145",
+      "replacements": [
+        {
+          "before": "      query[kSecUseOperationPrompt as String] = authPrompt",
+          "after": "      #if os(tvOS)\n      query[kSecUseOperationPrompt as String] = authPrompt\n      #else\n      let context = LAContext()\n      context.localizedReason = authPrompt\n      query[kSecUseAuthenticationContext as String] = context\n      #endif",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "ios/Pods/SDWebImage/SDWebImage/Core/SDImageCacheDefine.m",
+      "beforeSha256": "d97fc85c2b6542caaf64757f31a45995f58c6971d9a10f9acc33e0c50fd15669",
+      "afterSha256": "37c52a3657756c2d982cbdeaed347a86f94f130cfefac5370c8b7df88cc96d76",
+      "replacements": [
+        {
+          "before": "#import <CoreServices/CoreServices.h>",
+          "after": "#import <CoreServices/CoreServices.h>\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>",
+          "count": 1
+        },
+        {
+          "before": "            typeIdentifierHint = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtensionHint, kUTTypeImage);\n            // Ignore dynamic UTI\n            if (UTTypeIsDynamic((__bridge CFStringRef)typeIdentifierHint)) {\n                typeIdentifierHint = nil;\n            }",
+          "after": "            UTType *type = [UTType typeWithFilenameExtension:fileExtensionHint conformingToType:UTTypeImage];\n            // Preserve rejection of unregistered, dynamic image types.\n            typeIdentifierHint = type.isDynamic ? nil : type.identifier;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOCoder.m",
+      "beforeSha256": "66761f7d07ec5375f2bfbf68c135112353bb1e58f33d06d0c58fbed4856c8ea4",
+      "afterSha256": "67e7adc9dad46b7d6ed9e6511ab1e30909980bacbf9a03abbfb2da1761efc948",
+      "replacements": [
+        {
+          "before": "#import <CoreServices/CoreServices.h>",
+          "after": "#import <CoreServices/CoreServices.h>\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>",
+          "count": 1
+        },
+        {
+          "before": "            typeIdentifierHint = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtensionHint, kUTTypeImage);\n            // Ignore dynamic UTI\n            if (UTTypeIsDynamic((__bridge CFStringRef)typeIdentifierHint)) {\n                typeIdentifierHint = nil;\n            }",
+          "after": "            UTType *type = [UTType typeWithFilenameExtension:fileExtensionHint conformingToType:UTTypeImage];\n            // Preserve rejection of unregistered, dynamic image types.\n            typeIdentifierHint = type.isDynamic ? nil : type.identifier;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "ios/Pods/SDWebImage/SDWebImage/Core/NSData+ImageContentType.m",
+      "beforeSha256": "4b5189c0bc4943865b3184224193f84cce175184b32a2461c9f185d9f58a749a",
+      "afterSha256": "7fbf505ec1416ac29ae0e4ee619fccd41a79d0d963792335407cde1761279595",
+      "replacements": [
+        {
+          "before": "#import \"NSData+ImageContentType.h\"",
+          "after": "#import \"NSData+ImageContentType.h\"\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>",
+          "count": 1
+        },
+        {
+          "before": "UTTypeConformsTo(uttype, kSDUTTypeRAW)",
+          "after": "[[UTType typeWithIdentifier:(__bridge NSString *)uttype] conformsToType:[UTType typeWithIdentifier:(__bridge NSString *)kSDUTTypeRAW]]",
           "count": 1
         }
       ]
