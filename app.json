@@ -30,7 +30,8 @@
       ],
       "expo-secure-store",
       "@react-native-community/datetimepicker",
-      "./plugins/withIosMinimumTarget.cjs"
+      "./plugins/withIosMinimumTarget.cjs",
+      "./plugins/withIosCompatibility.cjs"
     ],
     "icon": "./assets/icon.png",
     "splash": {

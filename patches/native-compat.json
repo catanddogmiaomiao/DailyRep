@@ -1,0 +1,647 @@
+{
+  "description": "Reviewed source corrections for Expo SDK 54 on Xcode 27; exact hashes prevent applying to unreviewed upstream revisions. Legacy unspecified nullability is retained explicitly.",
+  "files": [
+    {
+      "path": "node_modules/expo-modules-core/ios/Legacy/NativeModulesProxy/EXNativeModulesProxy.h",
+      "beforeSha256": "bee618aefc66d96e5a0091b4beeb97cbe41f56a21f5102723e29ad98d5e8dde3",
+      "afterSha256": "5a675afe336fa37a2da656da600c99d18ad71aa914a76e974cf774ea16351c0f",
+      "replacements": [
+        {
+          "before": "(instancetype)initWithConstants",
+          "after": "(null_unspecified instancetype)initWithConstants",
+          "count": 1
+        },
+        {
+          "before": "EXModulesProxyConfig *nativeModulesConfig",
+          "after": "EXModulesProxyConfig * _Nonnull nativeModulesConfig",
+          "count": 1
+        },
+        {
+          "before": "(NSString *)moduleName",
+          "after": "(NSString * _Null_unspecified)moduleName",
+          "count": 1
+        },
+        {
+          "before": "(id)methodNameOrKey",
+          "after": "(id _Null_unspecified)methodNameOrKey",
+          "count": 1
+        },
+        {
+          "before": "(NSArray *)arguments",
+          "after": "(NSArray * _Null_unspecified)arguments",
+          "count": 1
+        },
+        {
+          "before": "(RCTPromiseResolveBlock)resolve",
+          "after": "(RCTPromiseResolveBlock _Null_unspecified)resolve",
+          "count": 1
+        },
+        {
+          "before": "(RCTPromiseRejectBlock)reject",
+          "after": "(RCTPromiseRejectBlock _Null_unspecified)reject",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Interfaces/FileSystem/EXFileSystemInterface.h",
+      "beforeSha256": "64181cd2be91f890b41f6bfab5bfb60434f46cce7b404ab64ca9acfe9505d99e",
+      "afterSha256": "fecbc5011f8f42e05f5f4546a16d4900a1e90af95318b87b5ab9f4d44a6c858f",
+      "replacements": [
+        {
+          "before": "NSString *documentDirectory",
+          "after": "NSString * _Null_unspecified documentDirectory",
+          "count": 1
+        },
+        {
+          "before": "NSString *cachesDirectory",
+          "after": "NSString * _Null_unspecified cachesDirectory",
+          "count": 1
+        },
+        {
+          "before": "NSString *applicationSupportDirectory",
+          "after": "NSString * _Null_unspecified applicationSupportDirectory",
+          "count": 1
+        },
+        {
+          "before": "(NSURL *)uri",
+          "after": "(NSURL * _Null_unspecified)uri",
+          "count": 1
+        },
+        {
+          "before": "(NSString *)directory",
+          "after": "(NSString * _Null_unspecified)directory",
+          "count": 1
+        },
+        {
+          "before": "(NSString *)extension",
+          "after": "(NSString * _Null_unspecified)extension",
+          "count": 1
+        },
+        {
+          "before": "(NSString *)path",
+          "after": "(NSString * _Null_unspecified)path",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/JSI/EXJSIInstaller.h",
+      "beforeSha256": "8d54d12deca0a2072b3aa4626d737e97d883b8f8683d9d4122df14340e295e76",
+      "afterSha256": "8a7d526f45b45343cf8e3a3077a1fb25e452469171f3dfb1537141cc716cf1ad",
+      "replacements": [
+        {
+          "before": "(void (^)(long))releaser",
+          "after": "(void (^ _Null_unspecified)(long))releaser",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/JSI/EXJSIUtils.h",
+      "beforeSha256": "79de9d1732076ae34649ad5263318f2292d5212683d17bb58684acbbde103dda",
+      "afterSha256": "0718d1961a7167dddad7f04b3870bb32901023b81959b0a455ab6ea6ad73b096",
+      "replacements": [
+        {
+          "before": "void (^)(RCTPromiseResolveBlock",
+          "after": "void (^ _Null_unspecified)(RCTPromiseResolveBlock",
+          "count": 1
+        },
+        {
+          "before": "RCTPromiseResolveBlock resolveWrapper",
+          "after": "RCTPromiseResolveBlock _Null_unspecified resolveWrapper",
+          "count": 1
+        },
+        {
+          "before": "RCTPromiseRejectBlock rejectWrapper",
+          "after": "RCTPromiseRejectBlock _Null_unspecified rejectWrapper",
+          "count": 1
+        },
+        {
+          "before": "NSString *code, NSString *message",
+          "after": "NSString * _Null_unspecified code, NSString * _Null_unspecified message",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/EXLegacyExpoViewProtocol.h",
+      "beforeSha256": "33434d522c5dc426ccc694d6ab42b542f88ebf9158ba4949d3589717fb334c1a",
+      "afterSha256": "4138b164e6f87f6c1a4463f9d26cce44a99e261ba6dfb052fa40da8e3103030a",
+      "replacements": [
+        {
+          "before": "(instancetype)initWithModuleRegistry",
+          "after": "(null_unspecified instancetype)initWithModuleRegistry",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXSessionTaskDelegate.h",
+      "beforeSha256": "f74a18c423e432ea167c33916988cc47dc75adc1707741623f52cc7dafedcd4a",
+      "afterSha256": "269ad01fb327dd241e47d16587a72ea1a77adba545f967e90da6ed89d4868749",
+      "replacements": [
+        {
+          "before": "NSURL *",
+          "after": "NSURL * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "NSURLSession *",
+          "after": "NSURLSession * _Null_unspecified ",
+          "count": 5
+        },
+        {
+          "before": "NSURLSessionTask *",
+          "after": "NSURLSessionTask * _Null_unspecified ",
+          "count": 2
+        },
+        {
+          "before": "NSURLSessionDownloadTask *",
+          "after": "NSURLSessionDownloadTask * _Null_unspecified ",
+          "count": 2
+        },
+        {
+          "before": "NSURLSessionDataTask *",
+          "after": "NSURLSessionDataTask * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "NSData *",
+          "after": "NSData * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "NSURLResponse *",
+          "after": "NSURLResponse * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "NSDictionary *",
+          "after": "NSDictionary * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "(EXPromiseResolveBlock)",
+          "after": "(EXPromiseResolveBlock _Null_unspecified)",
+          "count": 1
+        },
+        {
+          "before": "(EXPromiseRejectBlock)",
+          "after": "(EXPromiseRejectBlock _Null_unspecified)",
+          "count": 1
+        },
+        {
+          "before": "EXPromiseResolveBlock resolve",
+          "after": "EXPromiseResolveBlock _Null_unspecified resolve",
+          "count": 1
+        },
+        {
+          "before": "EXPromiseRejectBlock reject",
+          "after": "EXPromiseRejectBlock _Null_unspecified reject",
+          "count": 1
+        },
+        {
+          "before": "(NSError *)error",
+          "after": "(NSError * _Nullable)error",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXSessionCancelableUploadTaskDelegate.h",
+      "beforeSha256": "b4f807cae3119b903d2208e34153f7e870f9761026166e1c6c4cc586bc0daa64",
+      "afterSha256": "11e7cd8ef7094650d53c484435d1eb31bfc73fcd31683a27e0a4dddfa30c3a94",
+      "replacements": [
+        {
+          "before": "NSString *",
+          "after": "NSString * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "NSURLSessionUploadTask *",
+          "after": "NSURLSessionUploadTask * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "EXTaskHandlersManager *",
+          "after": "EXTaskHandlersManager * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "(EXPromiseResolveBlock)",
+          "after": "(EXPromiseResolveBlock _Null_unspecified)",
+          "count": 1
+        },
+        {
+          "before": "(EXPromiseRejectBlock)",
+          "after": "(EXPromiseRejectBlock _Null_unspecified)",
+          "count": 1
+        },
+        {
+          "before": "(EXUploadDelegateOnSendCallback)",
+          "after": "(EXUploadDelegateOnSendCallback _Null_unspecified)",
+          "count": 1
+        },
+        {
+          "before": "NSURLSessionUploadTask * _Null_unspecified task",
+          "after": "NSURLSessionTask * _Null_unspecified task",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXSessionDownloadTaskDelegate.h",
+      "beforeSha256": "6fb432afe0c41afca8f44e1520508b9a6405924c37a3915b754a6415ca151124",
+      "afterSha256": "016c7ec3e10efaa040757288d167d0613c81b00c54a8b5d96a3efc4936a02d87",
+      "replacements": [
+        {
+          "before": "NSURL *",
+          "after": "NSURL * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "(EXPromiseResolveBlock)",
+          "after": "(EXPromiseResolveBlock _Null_unspecified)",
+          "count": 1
+        },
+        {
+          "before": "(EXPromiseRejectBlock)",
+          "after": "(EXPromiseRejectBlock _Null_unspecified)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXSessionResumableDownloadTaskDelegate.h",
+      "beforeSha256": "3f179c7cdd48df446f296686b6a29b33d80c5c028f9455d79720da6ac8d48c6f",
+      "afterSha256": "f36e84d0cf06fc0ed133666605fb8a7be8f1fe25e9813e042fcfe254808a5313",
+      "replacements": [
+        {
+          "before": "NSString *",
+          "after": "NSString * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "NSURL *",
+          "after": "NSURL * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "NSURLSessionDownloadTask *",
+          "after": "NSURLSessionDownloadTask * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "EXTaskHandlersManager *",
+          "after": "EXTaskHandlersManager * _Null_unspecified ",
+          "count": 1
+        },
+        {
+          "before": "(EXPromiseResolveBlock)",
+          "after": "(EXPromiseResolveBlock _Null_unspecified)",
+          "count": 1
+        },
+        {
+          "before": "(EXPromiseRejectBlock)",
+          "after": "(EXPromiseRejectBlock _Null_unspecified)",
+          "count": 1
+        },
+        {
+          "before": "(EXDownloadDelegateOnWriteCallback)",
+          "after": "(EXDownloadDelegateOnWriteCallback _Null_unspecified)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Legacy/NativeModulesProxy/EXNativeModulesProxy.mm",
+      "beforeSha256": "916443fec23123c0410e08459fbfeedd0519ccaa54a8214630dc2aabd8f36b74",
+      "afterSha256": "aaeb2fc22a294023f6754b94c18b7d653236d8d9db56921ed31f1890c09f71f2",
+      "replacements": [
+        {
+          "before": "_exportedConstants = constants;",
+          "after": "_exportedConstants = [constants mutableCopy];",
+          "count": 1
+        },
+        {
+          "before": "_methodNames = methodNames;",
+          "after": "_methodNames = [methodNames mutableCopy];",
+          "count": 1
+        },
+        {
+          "before": "_viewManagerMetadata = viewManagerMetadata;",
+          "after": "_viewManagerMetadata = [viewManagerMetadata mutableCopy];",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXTaskHandlersManager.m",
+      "beforeSha256": "8cd18af853e6f78e9697249e16456f918a14c8fcbac4a89ba28f9a3e26edc3a7",
+      "afterSha256": "ed7dfd409ca0886d4d0878aac2160f72a64a2152fabcfcdc0a7e06b762aae406",
+      "replacements": [
+        {
+          "before": "if ([task isKindOfClass:[NSURLSessionUploadTask class]]) {\n    return (NSURLSessionDownloadTask *)task;",
+          "after": "if ([task isKindOfClass:[NSURLSessionUploadTask class]]) {\n    return (NSURLSessionUploadTask *)task;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Core/DynamicTypes/DynamicDataType.swift",
+      "beforeSha256": "82ec068e903bb33fea9932d364c4ff8abbc91d4fd8aa2d571e0825f44249daea",
+      "afterSha256": "3ef191dd299b55cbb4f171d59e8f22ffa2dc15fd485fdd92e3ff71098a06f894",
+      "replacements": [
+        {
+          "before": "return type is Data.Type",
+          "after": "return type is Self",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Core/DynamicTypes/DynamicRawType.swift",
+      "beforeSha256": "cd8160cceba8c611ecbd6eb58e1a7a723bbce916fa953a0106819c79f3477da9",
+      "afterSha256": "d7e97a2fc87ac439629456e21825f96a7898630714915904772a94c84947bd02",
+      "replacements": [
+        {
+          "before": "func wraps<InnerType>(_ type: InnerType.Type)",
+          "after": "func wraps<WrappedType>(_ type: WrappedType.Type)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Core/DynamicTypes/DynamicValueOrUndefinedType.swift",
+      "beforeSha256": "5bc743418ca871e7108bf33b3d4bfa40c50a6d82644db92733216f9071617ad5",
+      "afterSha256": "593d2637e650231015c78235548c33e6025a965df1e43b671ec4677afc698602",
+      "replacements": [
+        {
+          "before": "func wraps<InnerType>(_ type: InnerType.Type)",
+          "after": "func wraps<WrappedType>(_ type: WrappedType.Type)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/react-native-safe-area-context/ios/Fabric/RNCSafeAreaProviderComponentView.mm",
+      "beforeSha256": "5c34cbeb86d7bd0f831b0df18ef286dd16a1f30adc9a2216f5ab061daf2bf6fc",
+      "afterSha256": "770dbafb59342f6700aa18f795e6953a67871a63df97564db7ba778cfa24b870",
+      "replacements": [
+        {
+          "before": ".left = safeAreaInsets.left,\n                .bottom = safeAreaInsets.bottom,\n                .right = safeAreaInsets.right,",
+          "after": ".right = safeAreaInsets.right,\n                .bottom = safeAreaInsets.bottom,\n                .left = safeAreaInsets.left,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-file-system/ios/Legacy/NetworkingHelpers.swift",
+      "beforeSha256": "7241410030775035d2b4d5ab4519d123c238aa43f5a00c9b6a1612e08f0e7f54",
+      "afterSha256": "f6c12686da7175699211ec65b3701b7ac58d9705026d06ac2ac9b7eb1199a7e6",
+      "replacements": [
+        {
+          "before": "import CoreServices",
+          "after": "import UniformTypeIdentifiers",
+          "count": 1
+        },
+        {
+          "before": "  if let identifier = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, attachment.pathExtension as CFString, nil)?.takeRetainedValue() {\n    if let type = UTTypeCopyPreferredTagWithClass(identifier, kUTTagClassMIMEType)?.takeRetainedValue() {\n      return type as String\n    }\n  }\n  return \"application/octet-stream\"",
+          "after": "  return UTType(filenameExtension: attachment.pathExtension)?.preferredMIMEType ?? \"application/octet-stream\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo/ios/AppDelegates/ExpoAppDelegate.swift",
+      "beforeSha256": "02d60c4848d2df3f76e160d60efde619a1e30f5c5b4ed64e75fbedd9a33ee14a",
+      "afterSha256": "d8893d261bc847613881c2bda6258ad39bd15a73538ff0d5eed8fc31d228ad88",
+      "replacements": [
+        {
+          "before": "@preconcurrency ReactNativeFactoryProvider",
+          "after": "ReactNativeFactoryProvider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo/ios/AppDelegates/ExpoReactNativeFactory.swift",
+      "beforeSha256": "a84c060d8ad4415906fd22588347a65271c7a2cd8cca7df5e004368714e852bb",
+      "afterSha256": "8e01b3b92090bc3a2f67243144858235142692db761efa295cbc0910229f5d3e",
+      "replacements": [
+        {
+          "before": "guard let delegate = self.delegate else {",
+          "after": "guard self.delegate != nil else {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Core/Logging/PersistentFileLog.swift",
+      "beforeSha256": "6f53561ce2d0d39647cb46dd4b6c93a34ae15254d581f68a989fc8892113b35e",
+      "afterSha256": "3605a6de3762c7f3d1b712e1a58eb28d6b071aaa1535042a9bb88ea9500939a8",
+      "replacements": [
+        {
+          "before": "try fileHandle.write(data)",
+          "after": "try fileHandle.write(contentsOf: data)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "ios/Pods/libwebp/src/dsp/dec_neon.c",
+      "beforeSha256": "12a9552e9ab7aa3f0619f04cae9bce9009e23e82b3df86aab08e811d2af949ff",
+      "afterSha256": "fc0ec0058458f570a6f0218a899d7cdf3870a9902815536587447d99a019279f",
+      "replacements": [
+        {
+          "before": "uint16x8_t sum_top;",
+          "after": "uint16x8_t sum_top = vdupq_n_u16(0);",
+          "count": 2
+        },
+        {
+          "before": "uint16x8_t sum_left;",
+          "after": "uint16x8_t sum_left = vdupq_n_u16(0);",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "ios/Pods/libwebp/src/enc/backward_references_enc.c",
+      "beforeSha256": "59ca144a95dd40a3b42fcaf5e2ef1fe7382ada8425cb860e469023b826173192",
+      "afterSha256": "ce1ee864a5929d70700413d657b99264af9856007e68af5472422c686990a6d0",
+      "replacements": [
+        {
+          "before": "    int best_offset;",
+          "after": "    int best_offset = 0;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/react-native/scripts/react-native-xcode.sh",
+      "beforeSha256": "cc41a3b726ed066a77afd6fe1828a7b7584f2f844ae2c7f2acb6c7864c7b0345",
+      "afterSha256": "fcfe7c313111883526c104d1e1e416f99e137bb5fda05d2a26fa365c7e5b8f9c",
+      "replacements": [
+        {
+          "before": "  \"$HERMES_CLI_PATH\" -emit-binary",
+          "after": "  HERMES_GLOBALS_ARGS=()\n  if [[ -n \"$HERMES_GLOBALS_FILE\" ]]; then\n    HERMES_GLOBALS_ARGS+=(\"-include-globals=$HERMES_GLOBALS_FILE\")\n  fi\n  \"$HERMES_CLI_PATH\" \"${HERMES_GLOBALS_ARGS[@]}\" -emit-binary",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/react-native-svg/apple/Utils/RNSVGFabricConversions.h",
+      "beforeSha256": "4b76adaeb2dd0c8c6d07a61cb2242f33955829556bb5f7c5d7693193fc97d26b",
+      "afterSha256": "8b807865265524add6b2a8e225d7a49fbd0c760538b57067ded025c7fbe1a9bd",
+      "replacements": [
+        {
+          "before": "static id RNSVGConvertFollyDynamicToId",
+          "after": "static inline id RNSVGConvertFollyDynamicToId",
+          "count": 1
+        },
+        {
+          "before": "static RNSVGVBMOS intToRNSVGVBMOS",
+          "after": "static inline RNSVGVBMOS intToRNSVGVBMOS",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/react-native/ReactCommon/react/renderer/css/CSSSyntaxParser.h",
+      "beforeSha256": "50bf56e26e18aac8ddf3a96edfab38b39e6b2c74133578cdb9dd3995880c2801",
+      "afterSha256": "5636a95d9223127b9d1896c162fe5e05d91bb26ed996b1516e874aec7140e508",
+      "replacements": [
+        {
+          "before": "@param <ReturnT>",
+          "after": "@tparam ReturnT",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/react-native-svg/apple/Text/RNSVGTSpan.mm",
+      "beforeSha256": "60c1080902856f985b577fa3b1f08880a1b13cd03b179eff481e17ce3d62bf0a",
+      "afterSha256": "44f0d228588c6ac7402d497163e4032fdb328da9078c4dddbc6210fc4e11148a",
+      "replacements": [
+        {
+          "before": "#import \"RNSVGTSpan.h\"",
+          "after": "#include <vector>\n#import \"RNSVGTSpan.h\"",
+          "count": 1
+        },
+        {
+          "before": "    CFIndex indices[runGlyphCount];",
+          "after": "    std::vector<CFIndex> indicesStorage(runGlyphCount);\n    CFIndex *indices = indicesStorage.data();",
+          "count": 1
+        },
+        {
+          "before": "    CGSize advances[runGlyphCount];",
+          "after": "    std::vector<CGSize> advancesStorage(runGlyphCount);\n    CGSize *advances = advancesStorage.data();",
+          "count": 1
+        },
+        {
+          "before": "    CGGlyph glyphs[runGlyphCount];",
+          "after": "    std::vector<CGGlyph> glyphsStorage(runGlyphCount);\n    CGGlyph *glyphs = glyphsStorage.data();",
+          "count": 1
+        },
+        {
+          "before": "      CFIndex nextIndices[nextRunGlyphCount];",
+          "after": "      std::vector<CFIndex> nextIndicesStorage(nextRunGlyphCount);\n      CFIndex *nextIndices = nextIndicesStorage.data();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/react-native-svg/apple/Utils/RCTConvert+RNSVG.mm",
+      "beforeSha256": "2bc3c84bc6b1089cb9178666f828e4fb7aa0789752c836a67ed10ac89d0f28bf",
+      "afterSha256": "f6cecbd7eb224c9d14fbd436eaa7659f0852d90be4aa4eca36af34708e8602c8",
+      "replacements": [
+        {
+          "before": "#import \"RCTConvert+RNSVG.h\"",
+          "after": "#include <vector>\n#import \"RCTConvert+RNSVG.h\"",
+          "count": 1
+        },
+        {
+          "before": "  CGFloat colorsAndOffsets[values];",
+          "after": "  std::vector<CGFloat> colorsAndOffsetsStorage(values);\n  CGFloat *colorsAndOffsets = colorsAndOffsetsStorage.data();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/expo-modules-core/ios/Core/Views/ViewModuleWrapper.swift",
+      "beforeSha256": "e584f6e7281708546f9f9d5bb60e5288328ec5ad3643b6b3a19e0451cc6159f6",
+      "afterSha256": "2767fb27b5310a5a59960fe6ca8a2421ce8b986065d4d8beab10dc997b1dc2b1",
+      "replacements": [
+        {
+          "before": "public func viewName() -> String {\n    guard let moduleHolder, let viewDefinition",
+          "after": "public func viewName() -> String {\n    guard moduleHolder != nil, let viewDefinition",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "ios/Pods/SDWebImage/SDWebImage/Core/SDImageIOAnimatedCoder.m",
+      "beforeSha256": "d5fa20828b6ef6b084a633b8e657a950807ba436061043f37c55b8a16972556e",
+      "afterSha256": "683dd7a43215caa779d3a2b501243d28cf57bb6e592e6b6205422a5a2ef58f1e",
+      "replacements": [
+        {
+          "before": "newAlphaInfo | byteOrderInfo",
+          "after": "(CGBitmapInfo)newAlphaInfo | byteOrderInfo",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "ios/Pods/SDWebImage/SDWebImage/Core/UIImage+Transform.m",
+      "beforeSha256": "e86ef0cc91bb1461de46d3a38ec941e9baf70517815f91bab08cd581782235b3",
+      "afterSha256": "09936b4a0de281d62c306ec514b49e06c4f95750710b629559297d056eedc007",
+      "replacements": [
+        {
+          "before": "(bitmapInfo & kCGImagePixelFormatMask)",
+          "after": "(CGImagePixelFormatInfo)(bitmapInfo & (CGBitmapInfo)kCGImagePixelFormatMask)",
+          "count": 2
+        },
+        {
+          "before": "kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host",
+          "after": "(CGBitmapInfo)kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "ios/Pods/SDWebImageWebPCoder/SDWebImageWebPCoder/Classes/SDImageWebPCoder.m",
+      "beforeSha256": "9f3f8f9ce252f4dcf899be236dd8e78ff0698fa871279d69dcc238df741c5ad4",
+      "afterSha256": "ad84d23419b8dfa7d7776bb30f7a302696503be3cc95ee764266dd3507a23169",
+      "replacements": [
+        {
+          "before": "kCGBitmapByteOrderDefault | kCGImageAlphaPremultipliedLast",
+          "after": "kCGBitmapByteOrderDefault | (CGBitmapInfo)kCGImageAlphaPremultipliedLast",
+          "count": 1
+        },
+        {
+          "before": "kCGImageAlphaLast | kCGBitmapByteOrderDefault",
+          "after": "(CGBitmapInfo)kCGImageAlphaLast | kCGBitmapByteOrderDefault",
+          "count": 1
+        },
+        {
+          "before": "kCGImageAlphaNone | kCGBitmapByteOrderDefault",
+          "after": "(CGBitmapInfo)kCGImageAlphaNone | kCGBitmapByteOrderDefault",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "node_modules/@react-native-community/datetimepicker/ios/fabric/cpp/react/renderer/components/RNDateTimePicker/RNDateTimePickerState.h",
+      "beforeSha256": "6056ebad67c74240da4624a66456ee9518ff8032d0ffc7a97bd9d3f9e97d1365",
+      "afterSha256": "51a396fa81cd9fcd5f96dd29f83574b50a5cde9daf3fd33ffe5d926acbba61b4",
+      "replacements": [
+        {
+          "before": "#include <react/renderer/graphics/Geometry.h>",
+          "after": "#include <react/renderer/graphics/Float.h>\n#include <react/renderer/graphics/Point.h>\n#include <react/renderer/graphics/Rect.h>\n#include <react/renderer/graphics/RectangleCorners.h>\n#include <react/renderer/graphics/RectangleEdges.h>\n#include <react/renderer/graphics/Size.h>\n#include <react/renderer/graphics/Vector.h>",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

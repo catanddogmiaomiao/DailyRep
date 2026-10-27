@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "node --test src/*.test.js"
+    "test": "node --test src/*.test.js",
+    "postinstall": "node scripts/apply-native-patches.cjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
