@@ -25,13 +25,14 @@ import { File } from "expo-file-system";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
-import {subtypeOptions, subtypeLabel, matchesSubtype} from "./src/subtypes";
+import {subtypeOptions, subtypeLabel, matchesSubtype, recordDetails, projectRecord} from "./src/subtypes";
 type Sport = "running" | "swimming" | "pushups" | "abs";
 type Period = "week" | "month" | "year";
 type RecordItem = {
   id: string;
   sport: Sport;
   subtype?: string | null;
+  details?: {subtype: string | null; value: number; duration: number}[] | null;
   value: number;
   duration: number;
   occurredAt: string;
@@ -443,6 +444,7 @@ function App() {
               <Text style={s.sectionTitle}>最近记录</Text>
               {records
                 .filter((r) => r.sport === page && matchesSubtype(r, subtype))
+                .map(r => projectRecord(r, subtype))
                 .map((r) => (
                   <View key={r.id} style={s.record}>
                     <View style={{ flex: 1 }}>
@@ -451,7 +453,7 @@ function App() {
                           hour12: false,
                         })}
                       </Text>
-                      {subtypeOptions(page).length > 0 && <Text style={[s.small, {color: "#c6a75e", marginTop: 6}]}>{subtypeLabel(page, r.subtype)}</Text>}
+                      {subtypeOptions(page).length > 0 && <Text style={[s.small, {color: "#c6a75e", marginTop: 6}]}>{recordDetails(r).map(d => `${subtypeLabel(page,d.subtype)} ${fmt(d.value)}${selected.unit} · ${Math.floor(d.duration/60)}分${d.duration%60}秒`).join("\n")}</Text>}
                       <Text style={s.recordValue}>
                         {fmt(r.value)} {selected.unit}{" "}
                         <Text style={s.small}>
@@ -773,7 +775,7 @@ function Checkin({
   const [time, setTime] = useState(new Date()),
     [picker, setPicker] = useState<"date" | "time" | null>(null),
     [value, setValue] = useState(""),
-    [subtype, setSubtype] = useState(subtypeOptions(sport)[0]?.value || ""),
+    [details, setDetails] = useState([{subtype: subtypeOptions(sport)[0]?.value || "", value: "", minutes: "", seconds: "0"}]),
     [minutes, setMinutes] = useState("30"),
     [seconds, setSeconds] = useState("0"),
     [photo, setPhoto] = useState<{uri: string} | null>(null),
@@ -781,6 +783,8 @@ function Checkin({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const sp = sports[sport];
+  const hasDetails = subtypeOptions(sport).length > 0;
+  const changeDetail = (index: number, patch: Partial<(typeof details)[number]>) => setDetails(rows => rows.map((row,i) => i === index ? {...row,...patch} : row));
   async function choose(camera: boolean) {
     if (busy || processingPhoto) return;
     setProcessingPhoto(true);
@@ -838,11 +842,12 @@ function Checkin({
   }
   async function save() {
     if (processingPhoto || busy) return;
-    const v = Number(value),
-      m = Number(minutes),
-      sec = Number(seconds),
-      duration = m * 60 + sec;
+    const detailValues = details.map(d => ({subtype: d.subtype, value: Number(d.value), duration: Number(d.minutes) * 60 + Number(d.seconds)}));
+    const v = hasDetails ? detailValues.reduce((sum,d) => sum+d.value,0) : Number(value),
+      m = Number(minutes), sec = Number(seconds),
+      duration = hasDetails ? detailValues.reduce((sum,d) => sum+d.duration,0) : m * 60 + sec;
     if (
+      (hasDetails && details.some(d => !Number.isFinite(Number(d.value)) || Number(d.value) <= 0 || !Number.isInteger(Number(d.minutes)) || Number(d.minutes) < 0 || !Number.isInteger(Number(d.seconds)) || Number(d.seconds) < 0 || Number(d.seconds) > 59 || Number(d.minutes)*60+Number(d.seconds) < 1)) ||
       !Number.isFinite(v) ||
       v <= 0 ||
       v > 100000 ||
@@ -864,7 +869,7 @@ function Checkin({
     try {
       const data = new FormData();
       data.append("sport", sport);
-      if (subtype) data.append("subtype", subtype);
+      if (hasDetails) data.append("details", JSON.stringify(detailValues));
       data.append("value", String(v));
       data.append("duration", String(duration));
       data.append("occurredAt", time.toISOString());
@@ -950,11 +955,28 @@ function Checkin({
                 />
               </View>
             )}
-            {subtypeOptions(sport).length > 0 && <View style={{marginBottom: 20}}>
-              <Text style={s.fieldLabel}>{sport === "swimming" ? "泳姿" : "训练类型"}</Text>
-              <CategoryPicker options={subtypeOptions(sport)} value={subtype} onChange={setSubtype} disabled={busy} />
-              <Text style={[s.small, {marginTop: 8}]}>以下运动量和时长均计入{subtypeLabel(sport, subtype)}，其他类型可另打一次卡。</Text>
-            </View>}
+            {hasDetails ? <View style={{marginBottom: 20, gap: 12}}>
+              <Text style={s.fieldLabel}>{sport === "swimming" ? "本次游泳明细" : "本次训练明细"}</Text>
+              <Text style={s.small}>同一次运动可添加多种类型，共用日期和照片，保存后算一次打卡。</Text>
+              {details.map((detail,index) => <View key={index} style={{padding: 16, borderRadius: 16, backgroundColor: "#26334a", gap: 12}}>
+                <View style={s.row}><Text style={s.tabText}>明细 {index+1}</Text>
+                  {details.length > 1 && <Pressable accessibilityRole="button" accessibilityLabel={`移除明细${index+1}`} style={s.iconBtn} disabled={busy} onPress={() => setDetails(rows => rows.filter((_,i) => i !== index))}><Ionicons name="close" size={22} color="#e8dcc8" /></Pressable>}
+                </View>
+                <CategoryPicker options={subtypeOptions(sport).filter(option => option.value === detail.subtype || !details.some(d => d.subtype === option.value))} value={detail.subtype} onChange={subtype => changeDetail(index,{subtype})} disabled={busy} />
+                <Text style={s.tabText}>{sport === "swimming" ? "距离" : "训练量"}（{sp.unit}）</Text>
+                <TextInput accessibilityLabel={`${subtypeLabel(sport,detail.subtype)}运动量`} style={[s.formInput,{backgroundColor:"#e8dcc8",paddingHorizontal:12,marginTop:0}]} keyboardType="decimal-pad" value={detail.value} onChangeText={value => changeDetail(index,{value})} placeholder="0" placeholderTextColor="#777" editable={!busy} />
+                <Text style={s.tabText}>时长</Text>
+                <View style={[s.row,{gap:8}]}>
+                  <TextInput accessibilityLabel={`${subtypeLabel(sport,detail.subtype)}分钟数`} style={[s.formInput,{flex:1,backgroundColor:"#e8dcc8",paddingHorizontal:12,marginTop:0}]} keyboardType="number-pad" value={detail.minutes} onChangeText={minutes => changeDetail(index,{minutes})} placeholder="0" placeholderTextColor="#777" editable={!busy} /><Text style={s.tabText}>分</Text>
+                  <TextInput accessibilityLabel={`${subtypeLabel(sport,detail.subtype)}秒数`} style={[s.formInput,{flex:1,backgroundColor:"#e8dcc8",paddingHorizontal:12,marginTop:0}]} keyboardType="number-pad" value={detail.seconds} onChangeText={seconds => changeDetail(index,{seconds})} editable={!busy} /><Text style={s.tabText}>秒</Text>
+                </View>
+              </View>)}
+              {details.length < subtypeOptions(sport).length && <Pressable accessibilityRole="button" disabled={busy} style={[s.outline,{minHeight:52}]} onPress={() => {
+                const next = subtypeOptions(sport).find(option => !details.some(d => d.subtype === option.value));
+                if (next) setDetails(rows => [...rows,{subtype:next.value,value:"",minutes:"",seconds:"0"}]);
+              }}><Ionicons name="add" size={20} color="#c6a75e" /><Text style={s.tabText}>{sport === "swimming" ? "添加泳姿" : "添加训练项目"}</Text></Pressable>}
+              <Text style={s.tabText}>本次合计：{fmt(details.reduce((sum,d) => sum+(Number(d.value)||0),0))} {sp.unit} · {Math.floor(details.reduce((sum,d) => sum+(Number(d.minutes)||0)*60+(Number(d.seconds)||0),0)/60)} 分钟 · 1 次打卡</Text>
+            </View> : <>
             <View style={s.formBeige}>
               <Text style={s.darkLabel}>
                 {sport === "running"
@@ -997,6 +1019,7 @@ function Checkin({
                 <Text style={s.darkLabel}>秒</Text>
               </View>
             </View>
+            </>}
             <Text style={s.fieldLabel}>
               打卡照片 <Text style={s.small}>（可选 · 最大8MB）</Text>
             </Text>
