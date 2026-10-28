@@ -15,7 +15,7 @@ import {
   View,
   KeyboardAvoidingView,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView, initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as SecureStore from "expo-secure-store";
@@ -25,14 +25,17 @@ import { File } from "expo-file-system";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
-import {subtypeOptions, subtypeLabel, matchesSubtype, recordDetails, projectRecord} from "./src/subtypes";
+import {SetEditor} from "./src/SetEditor";
+import {SwipeableRecord, RecordThumbnail} from "./src/SwipeableRecord";
+import {subtypeOptions, subtypeLabel, matchesSubtype, recordDetails, projectRecord, recordUnit, formatSets} from "./src/subtypes";
 type Sport = "running" | "swimming" | "pushups" | "abs";
 type Period = "week" | "month" | "year";
 type RecordItem = {
   id: string;
   sport: Sport;
   subtype?: string | null;
-  details?: {subtype: string | null; value: number; duration: number}[] | null;
+  quantityUnit?: string | null;
+  details?: {subtype: string | null; value: number; duration: number; sets?: number[]}[] | null;
   value: number;
   duration: number;
   occurredAt: string;
@@ -49,7 +52,7 @@ const sports: Record<
   running: { name: "跑步", unit: "km", icon: "walk-outline" },
   swimming: { name: "游泳", unit: "m", icon: "water-outline" },
   pushups: { name: "俯卧撑", unit: "次", icon: "barbell-outline" },
-  abs: { name: "腹肌训练", unit: "分钟", icon: "fitness-outline" },
+  abs: { name: "腹肌训练", unit: "个", icon: "fitness-outline" },
 };
 const API = (process.env.EXPO_PUBLIC_API_URL || "").replace(/\/$/, "");
 const fmt = (n: number) => Number(n.toFixed(2)).toLocaleString("zh-CN");
@@ -71,6 +74,7 @@ function Fade() {
   );
 }
 function App() {
+  const photoInsets = useSafeAreaInsets();
   const [token, setToken] = useState<string | null>(null),
     [initializing, setInitializing] = useState(true),
     [email, setEmail] = useState(""),
@@ -82,7 +86,21 @@ function App() {
     [form, setForm] = useState(false),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
-    [photo, setPhoto] = useState<string | null>(null);
+    [photo, setPhoto] = useState<string | null>(null),
+    [openRecordId, setOpenRecordId] = useState<string | null>(null);
+  useEffect(() => {setOpenRecordId(null);}, [page, token, photo, form, subtype, period, anchor]);
+  function confirmDelete(record: RecordItem) {
+    setOpenRecordId(null);
+    Alert.alert("删除记录", record.photo ? "删除这次打卡的全部明细和照片？" : "删除这次打卡的全部明细？", [
+      {text: "取消", style: "cancel"},
+      {text: "删除", style: "destructive", onPress: async () => {
+        try {
+          await api("/records/" + record.id, {method: "DELETE"});
+          await refresh();
+        } catch (e: any) {setError(e.message);}
+      }},
+    ]);
+  }
   const generation = useRef(0);
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({y: 0, animated: false}); }, [page, token]);
@@ -189,6 +207,7 @@ function App() {
       <StatusBar style="light" />
       <ScrollView
         ref={scrollRef}
+        onScrollBeginDrag={() => setOpenRecordId(null)}
         contentContainerStyle={s.content}
         refreshControl={
           <RefreshControl
@@ -413,18 +432,19 @@ function App() {
                     },
                   ]}
                 >
-                  <Text style={s.darkLabel}>{stat.rows.length} 次打卡</Text>
+                  <Text style={s.darkLabel}>{stat.setCount > 0 ? stat.setCount + "组 · " : ""}{stat.rows.length} 次打卡</Text>
                   <Text style={s.darkLabel}>
                     {Math.floor(stat.duration / 3600)}小时{" "}
                     {Math.floor((stat.duration % 3600) / 60)}分
                   </Text>
                 </View>
               </View>
+              {stat.legacyCount > 0 && <Text style={[s.small,{marginTop:12}]}>本周期含 {stat.legacyCount} 条旧版腹肌计时记录：时长保留，分钟数不计入个数统计。原记录见下方。</Text>}
               {!subtype && stat.breakdown.length > 0 && (
                 <View style={{marginTop: 16, gap: 10}}>
                   {stat.breakdown.map(group => (
                     <Pressable key={group.value} accessibilityRole="button" accessibilityLabel={`查看${group.label}统计`} style={[s.record, {minHeight: 64}]} onPress={() => setSubtype(group.value)}>
-                      <View><Text style={s.tabText}>{group.label}</Text><Text style={s.small}>{group.count} 次打卡 · {Math.floor(group.duration / 60)}分{group.duration % 60}秒</Text></View>
+                      <View><Text style={s.tabText}>{group.label}</Text><Text style={s.small}>{group.setCount > 0 ? group.setCount + "组 · " : ""}{group.count} 次打卡 · {Math.floor(group.duration / 60)}分{group.duration % 60}秒</Text></View>
                       <Text style={s.recordValue}>{fmt(group.total)} {selected.unit}</Text>
                     </Pressable>
                   ))}
@@ -446,69 +466,37 @@ function App() {
                 .filter((r) => r.sport === page && matchesSubtype(r, subtype))
                 .map(r => projectRecord(r, subtype))
                 .map((r) => (
-                  <View key={r.id} style={s.record}>
-                    <View style={{ flex: 1 }}>
+                  <SwipeableRecord key={r.id}
+                    open={openRecordId === r.id}
+                    onOpen={() => setOpenRecordId(r.id)}
+                    onClose={() => setOpenRecordId(current => current === r.id ? null : current)}
+                    onDelete={() => confirmDelete(r)}
+                  >
+                    <Pressable style={{flex: 1, minWidth: 0}}
+                      onPress={() => setOpenRecordId(null)}
+                      accessibilityActions={[{name: "delete", label: "删除记录"}]}
+                      onAccessibilityAction={event => {if (event.nativeEvent.actionName === "delete") confirmDelete(r);}}
+                    >
                       <Text style={s.small}>
                         {new Date(r.occurredAt).toLocaleString("zh-CN", {
                           hour12: false,
                         })}
                       </Text>
-                      {subtypeOptions(page).length > 0 && <Text style={[s.small, {color: "#c6a75e", marginTop: 6}]}>{recordDetails(r).map(d => `${subtypeLabel(page,d.subtype)} ${fmt(d.value)}${selected.unit} · ${Math.floor(d.duration/60)}分${d.duration%60}秒`).join("\n")}</Text>}
+                      {(subtypeOptions(page).length > 0 || page === "pushups") && <Text style={[s.small, {color: "#c6a75e", marginTop: 6}]}>{recordDetails(r).map(d => `${page === "pushups" ? "俯卧撑" : subtypeLabel(page,d.subtype)} ${d.sets ? formatSets(d.sets,recordUnit(r)) : fmt(d.value)+recordUnit(r)} · ${Math.floor(d.duration/60)}分${d.duration%60}秒`).join("\n")}</Text>}
                       <Text style={s.recordValue}>
-                        {fmt(r.value)} {selected.unit}{" "}
+                        {fmt(r.value)} {recordUnit(r)}{" "}
                         <Text style={s.small}>
                           {" "}
                           · {Math.floor(r.duration / 60)}分{r.duration % 60}秒
                         </Text>
                       </Text>
-                    </View>
-                    {r.photo && (
-                      <Pressable
-                        accessibilityRole="button"
-                        hitSlop={0}
-                        style={s.iconBtn}
-                        accessibilityLabel="查看照片"
-                        onPress={() => setPhoto(r.photo)}
-                      >
-                        <Ionicons
-                          name="image-outline"
-                          size={21}
-                          color="#c6a75e"
-                        />
-                      </Pressable>
-                    )}
-                    <Pressable
-                      accessibilityLabel="删除记录"
-                      accessibilityRole="button"
-                      hitSlop={0}
-                      style={s.iconBtn}
-                      onPress={() =>
-                        Alert.alert("删除记录", "同时删除这次打卡的照片？", [
-                          { text: "取消", style: "cancel" },
-                          {
-                            text: "删除",
-                            style: "destructive",
-                            onPress: async () => {
-                              try {
-                                await api("/records/" + r.id, {
-                                  method: "DELETE",
-                                });
-                                await refresh();
-                              } catch (e: any) {
-                                setError(e.message);
-                              }
-                            },
-                          },
-                        ])
-                      }
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={18}
-                        color="#9caabd"
-                      />
                     </Pressable>
-                  </View>
+                    <RecordThumbnail
+                      uri={r.photo ? API + "/api/photos/" + r.photo : null}
+                      token={token}
+                      onPress={() => {setOpenRecordId(null); setPhoto(r.photo);}}
+                    />
+                  </SwipeableRecord>
                 ))}
               <Text style={s.footer}>dailyRep · 每天进步一点点</Text>
             </>
@@ -530,10 +518,18 @@ function App() {
       <Modal
         visible={!!photo}
         transparent
+        presentationStyle="overFullScreen"
         animationType="fade"
         onRequestClose={() => setPhoto(null)}
       >
-        <SafeAreaView style={s.photoModal}>
+        {/* Modal creates a separate native view tree. Use the measured React
+            context insets from the first frame, without native ancestor lookup. */}
+        <View style={[s.photoModal, {
+          paddingTop: photoInsets.top,
+          paddingBottom: photoInsets.bottom,
+          paddingLeft: photoInsets.left,
+          paddingRight: photoInsets.right,
+        }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="关闭照片" hitSlop={8} onPress={() => setPhoto(null)} style={[s.iconBtn, s.photoClose]}>
             <Ionicons name="close" size={30} color="#e8dcc8" />
           </Pressable>
@@ -548,7 +544,7 @@ function App() {
               accessibilityLabel="运动打卡照片"
             />
           )}
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -775,7 +771,8 @@ function Checkin({
   const [time, setTime] = useState(new Date()),
     [picker, setPicker] = useState<"date" | "time" | null>(null),
     [value, setValue] = useState(""),
-    [details, setDetails] = useState([{subtype: subtypeOptions(sport)[0]?.value || "", value: "", minutes: "", seconds: "0"}]),
+    [details, setDetails] = useState([{subtype: subtypeOptions(sport)[0]?.value || "", value: "", minutes: "", seconds: "0", sets: [""]}]),
+    [pushupSets, setPushupSets] = useState([""]),
     [minutes, setMinutes] = useState("30"),
     [seconds, setSeconds] = useState("0"),
     [photo, setPhoto] = useState<{uri: string} | null>(null),
@@ -842,12 +839,13 @@ function Checkin({
   }
   async function save() {
     if (processingPhoto || busy) return;
-    const detailValues = details.map(d => ({subtype: d.subtype, value: Number(d.value), duration: Number(d.minutes) * 60 + Number(d.seconds)}));
-    const v = hasDetails ? detailValues.reduce((sum,d) => sum+d.value,0) : Number(value),
+    const detailValues = details.map(d => ({subtype: d.subtype, value: sport === "abs" ? d.sets.reduce((sum,v) => sum+Number(v),0) : Number(d.value), duration: Number(d.minutes) * 60 + Number(d.seconds), ...(sport === "abs" ? {sets: d.sets.map(Number)} : {})}));
+    const v = hasDetails ? detailValues.reduce((sum,d) => sum+d.value,0) : sport === "pushups" ? pushupSets.reduce((sum,v) => sum+Number(v),0) : Number(value),
       m = Number(minutes), sec = Number(seconds),
       duration = hasDetails ? detailValues.reduce((sum,d) => sum+d.duration,0) : m * 60 + sec;
     if (
-      (hasDetails && details.some(d => !Number.isFinite(Number(d.value)) || Number(d.value) <= 0 || !Number.isInteger(Number(d.minutes)) || Number(d.minutes) < 0 || !Number.isInteger(Number(d.seconds)) || Number(d.seconds) < 0 || Number(d.seconds) > 59 || Number(d.minutes)*60+Number(d.seconds) < 1)) ||
+      (hasDetails && details.some(d => (sport === "abs" ? d.sets.some(v => !Number.isInteger(Number(v)) || Number(v) < 1) : !Number.isFinite(Number(d.value)) || Number(d.value) <= 0) || !Number.isInteger(Number(d.minutes)) || Number(d.minutes) < 0 || !Number.isInteger(Number(d.seconds)) || Number(d.seconds) < 0 || Number(d.seconds) > 59 || Number(d.minutes)*60+Number(d.seconds) < 1)) ||
+      (sport === "pushups" && pushupSets.some(v => !Number.isInteger(Number(v)) || Number(v) < 1)) ||
       !Number.isFinite(v) ||
       v <= 0 ||
       v > 100000 ||
@@ -870,6 +868,7 @@ function Checkin({
       const data = new FormData();
       data.append("sport", sport);
       if (hasDetails) data.append("details", JSON.stringify(detailValues));
+      else if (sport === "pushups") data.append("details", JSON.stringify([{subtype:null,sets:pushupSets.map(Number),duration,value:v}]));
       data.append("value", String(v));
       data.append("duration", String(duration));
       data.append("occurredAt", time.toISOString());
@@ -963,8 +962,10 @@ function Checkin({
                   {details.length > 1 && <Pressable accessibilityRole="button" accessibilityLabel={`移除明细${index+1}`} style={s.iconBtn} disabled={busy} onPress={() => setDetails(rows => rows.filter((_,i) => i !== index))}><Ionicons name="close" size={22} color="#e8dcc8" /></Pressable>}
                 </View>
                 <CategoryPicker options={subtypeOptions(sport).filter(option => option.value === detail.subtype || !details.some(d => d.subtype === option.value))} value={detail.subtype} onChange={subtype => changeDetail(index,{subtype})} disabled={busy} />
+                {sport === "abs" ? <SetEditor values={detail.sets} onChange={sets => changeDetail(index,{sets})} disabled={busy} /> : <>
                 <Text style={s.tabText}>{sport === "swimming" ? "距离" : "训练量"}（{sp.unit}）</Text>
                 <TextInput accessibilityLabel={`${subtypeLabel(sport,detail.subtype)}运动量`} style={[s.formInput,{backgroundColor:"#e8dcc8",paddingHorizontal:12,marginTop:0}]} keyboardType="decimal-pad" value={detail.value} onChangeText={value => changeDetail(index,{value})} placeholder="0" placeholderTextColor="#777" editable={!busy} />
+                </>}
                 <Text style={s.tabText}>时长</Text>
                 <View style={[s.row,{gap:8}]}>
                   <TextInput accessibilityLabel={`${subtypeLabel(sport,detail.subtype)}分钟数`} style={[s.formInput,{flex:1,backgroundColor:"#e8dcc8",paddingHorizontal:12,marginTop:0}]} keyboardType="number-pad" value={detail.minutes} onChangeText={minutes => changeDetail(index,{minutes})} placeholder="0" placeholderTextColor="#777" editable={!busy} /><Text style={s.tabText}>分</Text>
@@ -973,9 +974,9 @@ function Checkin({
               </View>)}
               {details.length < subtypeOptions(sport).length && <Pressable accessibilityRole="button" disabled={busy} style={[s.outline,{minHeight:52}]} onPress={() => {
                 const next = subtypeOptions(sport).find(option => !details.some(d => d.subtype === option.value));
-                if (next) setDetails(rows => [...rows,{subtype:next.value,value:"",minutes:"",seconds:"0"}]);
+                if (next) setDetails(rows => [...rows,{subtype:next.value,value:"",minutes:"",seconds:"0",sets:[""]}]);
               }}><Ionicons name="add" size={20} color="#c6a75e" /><Text style={s.tabText}>{sport === "swimming" ? "添加泳姿" : "添加训练项目"}</Text></Pressable>}
-              <Text style={s.tabText}>本次合计：{fmt(details.reduce((sum,d) => sum+(Number(d.value)||0),0))} {sp.unit} · {Math.floor(details.reduce((sum,d) => sum+(Number(d.minutes)||0)*60+(Number(d.seconds)||0),0)/60)} 分钟 · 1 次打卡</Text>
+              <Text style={s.tabText}>本次合计：{fmt(details.reduce((sum,d) => sum+(sport === "abs" ? d.sets.reduce((n,v) => n+(Number(v)||0),0) : (Number(d.value)||0)),0))} {sp.unit} · {Math.floor(details.reduce((sum,d) => sum+(Number(d.minutes)||0)*60+(Number(d.seconds)||0),0)/60)} 分钟 · 1 次打卡</Text>
             </View> : <>
             <View style={s.formBeige}>
               <Text style={s.darkLabel}>
@@ -988,6 +989,7 @@ function Checkin({
                       : "训练时长"}
                 （{sp.unit}）
               </Text>
+              {sport === "pushups" ? <View style={{padding:12,backgroundColor:"#26334a",borderRadius:12,marginTop:12}}><SetEditor values={pushupSets} onChange={setPushupSets} disabled={busy} /></View> : (
               <TextInput
                 accessibilityLabel="运动量"
                 style={s.formInput}
@@ -996,7 +998,8 @@ function Checkin({
                 onChangeText={setValue}
                 placeholder="0"
                 placeholderTextColor="#8b8b8b"
-              />
+              />              )}
+
             </View>
             <View style={s.formBeige}>
               <Text style={s.darkLabel}>运动时长</Text>
@@ -1305,7 +1308,7 @@ const s = StyleSheet.create({
 });
 export default function Root() {
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <App />
     </SafeAreaProvider>
   );
