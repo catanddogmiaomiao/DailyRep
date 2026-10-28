@@ -1,11 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {mkdtempSync,mkdirSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,rmSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 const require=createRequire(import.meta.url);
 const xcode=require('xcode');
+const plist=require('@expo/plist').default;
 const {installWidget}=require('../plugins/withDailyRepWidget.cjs');
 test('widget generation is idempotent, preserves application signing and avoids extra entitlements',()=>{
   const project=xcode.project(path.resolve('src/fixtures/app-project.pbxproj'));
@@ -17,6 +18,13 @@ test('widget generation is idempotent, preserves application signing and avoids 
     mkdirSync(path.join(dir,'ios'));
     const config={ios:{bundleIdentifier:'com.catanddogmiaomiao.dailyrep'}};
     installWidget(project,config,path.join(dir,'ios'),path.resolve('.'));
+    const metadata=plist.parse(readFileSync(path.join(dir,'ios/DailyRepWidget/DailyRepWidget-Info.plist'),'utf8'));
+    for(const key of ['CFBundleName','CFBundleIdentifier','CFBundleExecutable','CFBundlePackageType','CFBundleShortVersionString','CFBundleVersion']) {
+      assert.equal(typeof metadata[key],'string',`${key} must be present for device installation`);
+      assert.ok(metadata[key].trim().length,`${key} must be nonempty`);
+    }
+    assert.equal(metadata.CFBundlePackageType,'XPC!');
+    assert.equal(metadata.NSExtension.NSExtensionPointIdentifier,'com.apple.widgetkit-extension');
     const once=project.writeSync();
     installWidget(project,config,path.join(dir,'ios'),path.resolve('.'));
     assert.equal(project.writeSync(),once);

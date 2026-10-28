@@ -121,6 +121,8 @@
 - 后续独立核验：使用公共DNS核验得到的两条地址、保留原域名和TLS证书校验分别访问健康接口，均返回{ok:true}；确认后台业务健康。该核验不代表用户手机的DNS／蜂窝网络路径已恢复。
 # Long-term plans (2026-10-28)
 
+Installation metadata correction: widget generation now includes CFBundleName and CFBundleInfoDictionaryVersion. A regression check reproduced the missing-name error before the fix and passes afterward. All 21 tests passed; unsigned iPhone Release rebuilt successfully. The actual embedded DailyRepWidget.appex Info.plist contains CFBundleName=DailyRepWidget; application and extension name, identifier, executable, package type and version fields are nonempty, resolved, and executables exist. Device installation itself remains to be retried in Xcode.
+
 - All 21 Node tests and TypeScript checks passed: recurrence, 100/150 days, pause/resume, 100-to-110-to-120 history, independent records and reminder capacity.
 - Widget config fixture verifies idempotent generation, preserved application signing and no App Groups entitlement.
 - Xcode 27.1 arm64 iPhone Release build succeeded unsigned, including DailyRepNative and embedded DailyRepWidget.appex.
