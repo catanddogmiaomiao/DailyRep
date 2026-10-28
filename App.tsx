@@ -25,11 +25,13 @@ import { File } from "expo-file-system";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
+import {subtypeOptions, subtypeLabel, matchesSubtype} from "./src/subtypes";
 type Sport = "running" | "swimming" | "pushups" | "abs";
 type Period = "week" | "month" | "year";
 type RecordItem = {
   id: string;
   sport: Sport;
+  subtype?: string | null;
   value: number;
   duration: number;
   occurredAt: string;
@@ -74,6 +76,7 @@ function App() {
     [records, setRecords] = useState<RecordItem[]>([]),
     [page, setPage] = useState<Sport | "home">("home"),
     [period, setPeriod] = useState<Period>("week"),
+    [subtype, setSubtype] = useState(""),
     [anchor, setAnchor] = useState(new Date()),
     [form, setForm] = useState(false),
     [loading, setLoading] = useState(false),
@@ -145,6 +148,7 @@ function App() {
   }, []);
   const go = (key: Sport | "home") => {
     setPage(key);
+    setSubtype("");
     setAnchor(new Date());
     setPeriod("week");
   };
@@ -178,7 +182,7 @@ function App() {
       />
     );
   const selected = page === "home" ? null : sports[page],
-    stat = page === "home" ? null : report(records, page, period, anchor);
+    stat = page === "home" ? null : report(records, page, period, anchor, subtype);
   return (
     <SafeAreaView style={s.container} edges={["top", "bottom"]}>
       <StatusBar style="light" />
@@ -327,6 +331,12 @@ function App() {
                 <Ionicons name="add" size={21} color="#1f2a44" />
                 <Text style={s.goldText}>{selected.name}打卡</Text>
               </Pressable>
+              {subtypeOptions(page).length > 0 && (
+                <View style={{marginTop: 20}}>
+                  <Text style={s.fieldLabel}>按类型统计</Text>
+                  <CategoryPicker options={[{value: "", label: "全部类型"}, ...subtypeOptions(page), {value: "unclassified", label: "未分类（旧记录）"}]} value={subtype} onChange={setSubtype} />
+                </View>
+              )}
               <View style={s.tabs}>
                 {(["week", "month", "year"] as Period[]).map((p, i) => (
                   <Pressable
@@ -409,6 +419,16 @@ function App() {
                   </Text>
                 </View>
               </View>
+              {!subtype && stat.breakdown.length > 0 && (
+                <View style={{marginTop: 16, gap: 10}}>
+                  {stat.breakdown.map(group => (
+                    <Pressable key={group.value} accessibilityRole="button" accessibilityLabel={`查看${group.label}统计`} style={[s.record, {minHeight: 64}]} onPress={() => setSubtype(group.value)}>
+                      <View><Text style={s.tabText}>{group.label}</Text><Text style={s.small}>{group.count} 次打卡 · {Math.floor(group.duration / 60)}分{group.duration % 60}秒</Text></View>
+                      <Text style={s.recordValue}>{fmt(group.total)} {selected.unit}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
               <Text style={s.sectionTitle}>
                 运动量趋势 <Text style={s.small}>（{selected.unit}）</Text>
               </Text>
@@ -422,7 +442,7 @@ function App() {
               )}
               <Text style={s.sectionTitle}>最近记录</Text>
               {records
-                .filter((r) => r.sport === page)
+                .filter((r) => r.sport === page && matchesSubtype(r, subtype))
                 .map((r) => (
                   <View key={r.id} style={s.record}>
                     <View style={{ flex: 1 }}>
@@ -431,6 +451,7 @@ function App() {
                           hour12: false,
                         })}
                       </Text>
+                      {subtypeOptions(page).length > 0 && <Text style={[s.small, {color: "#c6a75e", marginTop: 6}]}>{subtypeLabel(page, r.subtype)}</Text>}
                       <Text style={s.recordValue}>
                         {fmt(r.value)} {selected.unit}{" "}
                         <Text style={s.small}>
@@ -720,6 +741,26 @@ function BarChart({
     </View>
   );
 }
+function CategoryPicker({options, value, onChange, disabled = false}: {
+  options: {value: string; label: string}[];
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return <View style={{marginTop: 10}}>
+    <Pressable accessibilityRole="button" accessibilityLabel="选择运动类型" accessibilityState={{expanded: open, disabled}} disabled={disabled} onPress={() => setOpen(!open)} style={[s.row, {minHeight: 52, paddingHorizontal: 16, backgroundColor: "#26334a", borderRadius: 12, borderWidth: 1, borderColor: "#c6a75e66"}]}>
+      <Text style={s.tabText}>{options.find(o => o.value === value)?.label || "请选择类型"}</Text>
+      <Ionicons name={open ? "chevron-up" : "chevron-down"} size={20} color="#c6a75e" />
+    </Pressable>
+    {open && !disabled && <View style={{backgroundColor: "#26334a", borderRadius: 12, marginTop: 4}}>
+      {options.map(option => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{selected: option.value === value}} onPress={() => {onChange(option.value); setOpen(false);}} style={[s.row, {minHeight: 52, paddingHorizontal: 16}]}>
+        <Text style={{color: option.value === value ? "#c6a75e" : "#e8dcc8", fontSize: 16}}>{option.label}</Text>
+        {option.value === value && <Ionicons name="checkmark" size={20} color="#c6a75e" />}
+      </Pressable>)}
+    </View>}
+  </View>;
+}
 function Checkin({
   sport,
   onClose,
@@ -732,6 +773,7 @@ function Checkin({
   const [time, setTime] = useState(new Date()),
     [picker, setPicker] = useState<"date" | "time" | null>(null),
     [value, setValue] = useState(""),
+    [subtype, setSubtype] = useState(subtypeOptions(sport)[0]?.value || ""),
     [minutes, setMinutes] = useState("30"),
     [seconds, setSeconds] = useState("0"),
     [photo, setPhoto] = useState<{uri: string} | null>(null),
@@ -822,6 +864,7 @@ function Checkin({
     try {
       const data = new FormData();
       data.append("sport", sport);
+      if (subtype) data.append("subtype", subtype);
       data.append("value", String(v));
       data.append("duration", String(duration));
       data.append("occurredAt", time.toISOString());
@@ -907,6 +950,11 @@ function Checkin({
                 />
               </View>
             )}
+            {subtypeOptions(sport).length > 0 && <View style={{marginBottom: 20}}>
+              <Text style={s.fieldLabel}>{sport === "swimming" ? "泳姿" : "训练类型"}</Text>
+              <CategoryPicker options={subtypeOptions(sport)} value={subtype} onChange={setSubtype} disabled={busy} />
+              <Text style={[s.small, {marginTop: 8}]}>以下运动量和时长均计入{subtypeLabel(sport, subtype)}，其他类型可另打一次卡。</Text>
+            </View>}
             <View style={s.formBeige}>
               <Text style={s.darkLabel}>
                 {sport === "running"

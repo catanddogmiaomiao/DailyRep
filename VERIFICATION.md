@@ -79,3 +79,11 @@
 - 40份源码补丁全部通过SHA256与幂等检查；六项测试、TypeScript检查和git diff --check通过。补丁通过已有安装钩子重复应用。
 - 完整日志位于本工作区work/ios-support/xcodebuild-warnings-round2.log；位置清单为reports/ios-warnings.md，修复说明为reports/native-compat-round2.md。
 - 未升级框架大版本、未修改签名账号；此轮未在真机上验证相册选择与生物识别认证。
+
+
+## 2026-10-28：分类打卡及报告
+
+- 新增可空subtype字段：蛙泳breaststroke、蝶泳butterfly、自由泳freestyle；仰卧起坐situps、腹肌轮abwheel。验证拒绝不存在和跨项目类型，兼容旧客户端省略类型。
+- App／网页打卡加入下拉选择；报告加入分类总量、总时长和次数，并同步筛选周月年柱状图与最近记录。历史无类型数据单列未分类。两个仓库的统计和类型定义源码一致。
+- Express测试9项、Cloudflare真实本地运行时测试1项通过，覆盖五种类型持久化、非法类型拒绝、分类Excel真实文件、空值兼容和增量迁移保存旧数据；网页生产构建通过。
+- App测试7项、TypeScript检查和iOS生产Hermes JS包导出通过。未新增原生依赖。Xcode命令行原生编译受本次运行环境服务权限限制，提示workspace无法识别；没有将其记为编译通过。未取得真机交互和截图验收结果。
