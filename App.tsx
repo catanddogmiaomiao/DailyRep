@@ -14,6 +14,8 @@ import {
   TextInput,
   View,
   KeyboardAvoidingView,
+  AppState,
+  Linking,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -25,6 +27,9 @@ import { File } from "expo-file-system";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
+import {PlansPanel, PlanSummary} from "./src/PlansPanel";
+import {dateInZone, isDue, matchesPlan, planProgress} from "./src/plans";
+import {syncReminders, restoreCachedReminders, clearDeviceReminders, refreshWidgets, listenToNotifications, lastNotification} from "./src/nativeReminders";
 import {SetEditor} from "./src/SetEditor";
 import {SwipeableRecord, RecordThumbnail} from "./src/SwipeableRecord";
 import {subtypeOptions, subtypeLabel, matchesSubtype, recordDetails, projectRecord, recordUnit, formatSets} from "./src/subtypes";
@@ -35,6 +40,7 @@ type RecordItem = {
   sport: Sport;
   subtype?: string | null;
   quantityUnit?: string | null;
+  planId?: string | null;
   details?: {subtype: string | null; value: number; duration: number; sets?: number[]}[] | null;
   value: number;
   duration: number;
@@ -79,9 +85,15 @@ function App() {
     [initializing, setInitializing] = useState(true),
     [email, setEmail] = useState(""),
     [records, setRecords] = useState<RecordItem[]>([]),
+    [plans,setPlans] = useState<any[]>([]),
+    [plansVisible,setPlansVisible] = useState(false),
+    [initialPlanId,setInitialPlanId] = useState(""),
+    [dataReady,setDataReady] = useState(false),
+    [coverage,setCoverage] = useState<any>(null),
     [page, setPage] = useState<Sport | "home">("home"),
     [period, setPeriod] = useState<Period>("week"),
     [subtype, setSubtype] = useState(""),
+    [planFilter,setPlanFilter] = useState(""),
     [anchor, setAnchor] = useState(new Date()),
     [form, setForm] = useState(false),
     [loading, setLoading] = useState(false),
@@ -96,6 +108,7 @@ function App() {
       {text: "删除", style: "destructive", onPress: async () => {
         try {
           await api("/records/" + record.id, {method: "DELETE"});
+          const next=records.filter(r=>r.id!==record.id);setRecords(next);setPlans(previous=>previous.map(p=>({...p,progress:planProgress(p,next)})));
           await refresh();
         } catch (e: any) {setError(e.message);}
       }},
@@ -132,26 +145,56 @@ function App() {
     await SecureStore.deleteItemAsync("dailyrep_token");
     setToken(null);
     setRecords([]);
+    setPlans([]);setDataReady(false);setPlansVisible(false);
+    await clearDeviceReminders();
     setPhoto(null);
   }
-  async function refresh(auth = token) {
+  async function refresh(auth = token, propagate = false) {
     const version = generation.current;
     setLoading(true);
     try {
-      const rows = await api("/records", {}, auth);
-      if (version === generation.current) setRecords(rows);
+      const [rows, planRows] = await Promise.all([api("/records", {}, auth),api("/plans",{},auth)]);
+      if (version === generation.current) {setRecords(rows);setPlans(planRows);setDataReady(true);}
     } catch (e: any) {
       if (e.status === 401) await clear();
       else setError(e.message);
+      if(propagate)throw e;
     } finally {
       setLoading(false);
     }
   }
+  const pendingLaunch=useRef<any>(null), routeHandler=useRef<(request:any)=>void>(()=>{});
+  routeHandler.current=(request:any)=>{
+    if(!token||!dataReady){pendingLaunch.current=request;return;}
+    if(request.plans){setPlansVisible(true);return;}
+    if(!Object.hasOwn(sports,request.sport))return;
+    const plan=plans.find(p=>p.id===request.planId);
+    if(request.planId&&(!plan||plan.status!=="active"||plan.progress.ended)){setPlansVisible(true);return;}
+    go(request.sport as Sport);setInitialPlanId(request.planId||"");setForm(true);
+  };
+  useEffect(()=>{
+    const handleURL=(url:string|null)=>{if(!url)return;try{const parsed=new URL(url);if(parsed.protocol!=="dailyrep:")return;routeHandler.current(parsed.hostname==="plans"?{plans:true}:{sport:parsed.searchParams.get("sport"),planId:parsed.searchParams.get("planId")});}catch{}};
+    Linking.getInitialURL().then(handleURL);
+    const link=Linking.addEventListener("url",event=>handleURL(event.url));
+    const notification=listenToNotifications(data=>routeHandler.current(data));
+    lastNotification().then(data=>{if(data)routeHandler.current(data);});
+    return()=>{link.remove();notification?.remove();};
+  },[]);
+  useEffect(()=>{if(token&&dataReady&&pendingLaunch.current){const request=pendingLaunch.current;pendingLaunch.current=null;routeHandler.current(request);}},[token,dataReady,plans]);
+  useEffect(()=>{
+    if(!token||!dataReady)return;
+    let active=true;
+    syncReminders(plans,records).then(result=>{if(active)setCoverage(result);}).catch((e:any)=>{if(active)setError("提醒同步失败："+e.message);});
+    refreshWidgets();
+    return()=>{active=false;};
+  },[token,dataReady,plans,records]);
+  useEffect(()=>{if(!token)return;const sub=AppState.addEventListener("change",state=>{if(state==="active"){refresh();lastNotification().then(data=>{if(data)routeHandler.current(data);});}});return()=>sub.remove();},[token]);
   useEffect(() => {
     (async () => {
       try {
         const saved = await SecureStore.getItemAsync("dailyrep_token");
         if (saved) {
+          await restoreCachedReminders();
           const me = await api("/me", {}, saved);
           setToken(saved);
           setEmail(me.email);
@@ -166,7 +209,7 @@ function App() {
     })();
   }, []);
   const go = (key: Sport | "home") => {
-    setPage(key);
+    setPage(key);setPlanFilter("");
     setSubtype("");
     setAnchor(new Date());
     setPeriod("week");
@@ -201,7 +244,7 @@ function App() {
       />
     );
   const selected = page === "home" ? null : sports[page],
-    stat = page === "home" ? null : report(records, page, period, anchor, subtype);
+    stat = page === "home" ? null : report(records.filter(r=>matchesPlan(r,planFilter)), page, period, anchor, subtype);
   return (
     <SafeAreaView style={s.container} edges={["top", "bottom"]}>
       <StatusBar style="light" />
@@ -342,21 +385,28 @@ function App() {
                 );
               })}
             </View>
+            <View style={{marginBottom:20,gap:12}}>
+              <View style={s.row}><Text style={s.sectionTitle}>长期计划</Text><Pressable accessibilityRole="button" style={s.textAction} onPress={()=>setPlansVisible(true)}><Text style={{color:'#c6a75e'}}>管理计划</Text></Pressable></View>
+              {plans.filter(p=>p.status==='active'||p.status==='paused').map(plan=><PlanSummary key={plan.id} plan={plan} onPress={()=>setPlansVisible(true)}/>)}
+              {!plans.some(p=>p.status==='active'||p.status==='paused')&&<Pressable style={s.record} accessibilityRole="button" onPress={()=>setPlansVisible(true)}><Text style={s.tabText}>设置一个100天目标，也可以继续自由打卡 →</Text></Pressable>}
+            </View>
             <Text style={s.footer}>私人空间 · 记录只属于你</Text>
           </>
         ) : (
           stat && (
             <>
-              <Pressable style={s.gold} onPress={() => setForm(true)}>
+              <Pressable style={s.gold} onPress={() => {setInitialPlanId("");setForm(true);}}>
                 <Ionicons name="add" size={21} color="#1f2a44" />
                 <Text style={s.goldText}>{selected.name}打卡</Text>
               </Pressable>
+              {plans.some(p=>p.sport===page)&&<View style={{marginTop:14}}><Text style={s.fieldLabel}>统计范围</Text><CategoryPicker options={[{value:'',label:'全部记录'},{value:'free',label:'自由打卡'},...plans.filter(p=>p.sport===page).map(p=>({value:p.id,label:p.title}))]} value={planFilter} onChange={setPlanFilter}/></View>}
               {subtypeOptions(page).length > 0 && (
                 <View style={{marginTop: 20}}>
                   <Text style={s.fieldLabel}>按类型统计</Text>
                   <CategoryPicker options={[{value: "", label: "全部类型"}, ...subtypeOptions(page), {value: "unclassified", label: "未分类（旧记录）"}]} value={subtype} onChange={setSubtype} />
                 </View>
               )}
+              <Pressable accessibilityRole="button" style={[s.row,{minHeight:48,marginTop:8}]} onPress={()=>setPlansVisible(true)}><Text style={s.small}>{plans.find(p=>p.sport===page&&(p.status==='active'||p.status==='paused'))?.title||'未设长期计划 · 自由打卡也很好'}</Text><Text style={{color:'#c6a75e'}}>管理计划 →</Text></Pressable>
               <View style={s.tabs}>
                 {(["week", "month", "year"] as Period[]).map((p, i) => (
                   <Pressable
@@ -463,7 +513,7 @@ function App() {
               )}
               <Text style={s.sectionTitle}>最近记录</Text>
               {records
-                .filter((r) => r.sport === page && matchesSubtype(r, subtype))
+                .filter((r) => r.sport === page && matchesSubtype(r, subtype) && matchesPlan(r,planFilter))
                 .map(r => projectRecord(r, subtype))
                 .map((r) => (
                   <SwipeableRecord key={r.id}
@@ -506,15 +556,20 @@ function App() {
       {form && page !== "home" && (
         <Checkin
           sport={page}
+          plans={plans}
+          initialPlanId={initialPlanId}
           onClose={() => setForm(false)}
           onSave={async (data) => {
-            await api("/records", { method: "POST", body: data });
+            const created=await api("/records", { method: "POST", body: data });
+            const next=[created,...records.filter(r=>r.id!==created.id)];
+            setRecords(next);setPlans(previous=>previous.map(p=>({...p,progress:planProgress(p,next)})));
             setForm(false);
             setAnchor(new Date());
             await refresh();
           }}
         />
       )}
+      <PlansPanel visible={plansVisible} plans={plans} api={api} onChanged={async()=>{await refresh(token,true);}} onPlanSaved={saved=>setPlans(previous=>[{...saved,progress:planProgress(saved,records)},...previous.filter(p=>p.id!==saved.id)])} onClose={()=>setPlansVisible(false)} coverage={coverage} onCheckin={(sport,planId)=>{setPlansVisible(false);go(sport as Sport);setInitialPlanId(planId);setForm(true);}}/>
       <Modal
         visible={!!photo}
         transparent
@@ -761,10 +816,14 @@ function CategoryPicker({options, value, onChange, disabled = false}: {
 }
 function Checkin({
   sport,
+  plans,
+  initialPlanId,
   onClose,
   onSave,
 }: {
   sport: Sport;
+  plans: any[];
+  initialPlanId: string;
   onClose: () => void;
   onSave: (data: FormData) => Promise<void>;
 }) {
@@ -779,6 +838,9 @@ function Checkin({
     [processingPhoto, setProcessingPhoto] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [planId,setPlanId]=useState(initialPlanId||plans.find(p=>p.sport===sport&&p.status==='active'&&isDue(p,dateInZone(time,p.timeZone)))?.id||"");
+  const eligiblePlans=plans.filter(p=>p.sport===sport&&p.status!=='archived'&&dateInZone(time,p.timeZone)>=p.startDate&&dateInZone(time,p.timeZone)<=p.endDate);
+  useEffect(()=>{if(planId&&!eligiblePlans.some(p=>p.id===planId))setPlanId("");},[time,plans,planId]);
   const sp = sports[sport];
   const hasDetails = subtypeOptions(sport).length > 0;
   const changeDetail = (index: number, patch: Partial<(typeof details)[number]>) => setDetails(rows => rows.map((row,i) => i === index ? {...row,...patch} : row));
@@ -867,6 +929,7 @@ function Checkin({
     try {
       const data = new FormData();
       data.append("sport", sport);
+      if(planId)data.append("planId",planId);
       if (hasDetails) data.append("details", JSON.stringify(detailValues));
       else if (sport === "pushups") data.append("details", JSON.stringify([{subtype:null,sets:pushupSets.map(Number),duration,value:v}]));
       data.append("value", String(v));
@@ -954,6 +1017,7 @@ function Checkin({
                 />
               </View>
             )}
+            <View style={{marginBottom:20}}><Text style={s.fieldLabel}>关联长期计划（可选）</Text><CategoryPicker options={[{value:'',label:'自由打卡，不关联计划'},...eligiblePlans.map(p=>({value:p.id,label:p.title+(isDue(p,dateInZone(time,p.timeZone))?' · 当天计划':' · 额外训练')}))]} value={planId} onChange={setPlanId} disabled={busy}/><Text style={s.small}>同一天打卡多次仍只算一个训练日；补打卡按所选运动日期计算。</Text></View>
             {hasDetails ? <View style={{marginBottom: 20, gap: 12}}>
               <Text style={s.fieldLabel}>{sport === "swimming" ? "本次游泳明细" : "本次训练明细"}</Text>
               <Text style={s.small}>同一次运动可添加多种类型，共用日期和照片，保存后算一次打卡。</Text>

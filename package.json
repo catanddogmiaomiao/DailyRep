@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "node --test src/*.test.js",
@@ -30,5 +30,10 @@
     "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
   },
-  "type": "module"
+  "type": "module",
+  "expo": {
+    "autolinking": {
+      "nativeModulesDir": "./modules"
+    }
+  }
 }

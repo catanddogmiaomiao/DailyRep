@@ -31,13 +31,15 @@
       "expo-secure-store",
       "@react-native-community/datetimepicker",
       "./plugins/withIosMinimumTarget.cjs",
-      "./plugins/withIosCompatibility.cjs"
+      "./plugins/withIosCompatibility.cjs",
+      "./plugins/withDailyRepWidget.cjs"
     ],
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#1F2A44"
-    }
+    },
+    "scheme": "dailyrep"
   }
 }

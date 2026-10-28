@@ -4,7 +4,7 @@ dist/
 .env
 .env.*
 !.env.example
-android/
-ios/
+/android/
+/ios/
 *.log
 .DS_Store
