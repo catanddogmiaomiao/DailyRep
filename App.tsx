@@ -29,7 +29,7 @@ import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
 import {PlansPanel, PlanSummary} from "./src/PlansPanel";
 import {dateInZone, isDue, matchesPlan, planProgress} from "./src/plans";
-import {syncReminders, restoreCachedReminders, clearDeviceReminders, syncWidgetSnapshot, clearWidgetSnapshot, listenToNotifications, lastNotification} from "./src/nativeReminders";
+import {syncReminders, restoreCachedReminders, clearDeviceReminders, syncWidgetSnapshot, clearWidgetSnapshot, listenToNotifications, lastNotification, playCheckinSuccess} from "./src/nativeReminders";
 import {SetEditor} from "./src/SetEditor";
 import {SwipeableRecord, RecordThumbnail} from "./src/SwipeableRecord";
 import {RecordShareActions} from "./src/RecordShareActions";
@@ -570,6 +570,7 @@ function App() {
           onClose={() => setForm(false)}
           onSave={async (data) => {
             const created=await api("/records", { method: "POST", body: data });
+            void playCheckinSuccess();
             const next=[created,...records.filter(r=>r.id!==created.id)];
             setRecords(next);setPlans(previous=>previous.map(p=>({...p,progress:planProgress(p,next)})));
             setForm(false);

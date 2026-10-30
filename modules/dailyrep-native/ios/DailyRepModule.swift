@@ -2,6 +2,7 @@ import ExpoModulesCore
 import UserNotifications
 import WidgetKit
 import UIKit
+import AVFoundation
 
 private final class ReminderDelegate: NSObject, UNUserNotificationCenterDelegate {
   static let shared = ReminderDelegate()
@@ -113,6 +114,7 @@ public class DailyRepModule: Module {
       result["legacyWidgetInstalled"]=widgets.contains{$0.kind == "DailyRepProgress"}
       return result
     }
+    AsyncFunction("playCheckinSuccess") { CheckinFeedback.shared.play() }.runOnQueue(.main)
     AsyncFunction("refreshWidgets") { WidgetCenter.shared.reloadAllTimelines() }
     AsyncFunction("copyString") { (text: String) in UIPasteboard.general.string = text }.runOnQueue(.main)
     AsyncFunction("openNotificationSettings") {
@@ -126,6 +128,74 @@ public class DailyRepModule: Module {
     case .denied: return "denied"
     default: return "undetermined"
     }
+  }
+}
+
+// A short original two-hit sound, generated locally; no network or bundled media needed.
+enum CheckinSound {
+  static func wav() -> Data {
+    let rate = 22050
+    let count = Int(Double(rate) * 0.54)
+    var pcm = Data(capacity:count * 2)
+    for i in 0..<count {
+      let t = Double(i) / Double(rate)
+      var value = 0.0
+      for (start, frequency, gain) in [(0.0,146.0,0.65),(0.18,116.0,0.78)] {
+        let x = t - start
+        if x >= 0 && x < 0.30 {
+          let attack = min(1,x / 0.006)
+          let release = min(1,(0.30 - x) / 0.035)
+          let envelope = attack * release * exp(-x * 19)
+          let phase = 2 * Double.pi * (frequency * x + 16 * (1 - exp(-x * 35)) / 35)
+          value += gain * envelope * (sin(phase) + 0.22 * sin(2 * phase) + 0.08 * sin(3 * phase))
+        }
+      }
+      var sample = Int16(max(-0.95,min(0.95,value)) * Double(Int16.max)).littleEndian
+      withUnsafeBytes(of:&sample) {pcm.append(contentsOf:$0)}
+    }
+    var data = Data()
+    func text(_ value:String) {data.append(contentsOf:value.utf8)}
+    func u16(_ value:UInt16) {var v=value.littleEndian;withUnsafeBytes(of:&v) {data.append(contentsOf:$0)}}
+    func u32(_ value:UInt32) {var v=value.littleEndian;withUnsafeBytes(of:&v) {data.append(contentsOf:$0)}}
+    text("RIFF");u32(UInt32(36 + pcm.count));text("WAVEfmt ");u32(16)
+    u16(1);u16(1);u32(UInt32(rate));u32(UInt32(rate * 2));u16(2);u16(16)
+    text("data");u32(UInt32(pcm.count));data.append(pcm)
+    return data
+  }
+}
+
+private final class CheckinFeedback {
+  static let shared = CheckinFeedback()
+  private var player: AVAudioPlayer?
+  private let first = UIImpactFeedbackGenerator(style:.medium)
+  private let second = UIImpactFeedbackGenerator(style:.soft)
+  private var lastPlayed: TimeInterval = -1
+  private var pending: DispatchWorkItem?
+  func play() {
+    guard UIApplication.shared.applicationState == .active else {return}
+    let now = ProcessInfo.processInfo.systemUptime
+    guard now - lastPlayed > 0.6 else {return}
+    lastPlayed = now
+    pending?.cancel()
+    first.prepare();second.prepare()
+    // Respect Silent mode, and leave music/podcasts playing alongside the effect.
+    do {
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(.ambient,mode:.default,options:[.mixWithOthers])
+      try session.setActive(true)
+      if player == nil {player = try AVAudioPlayer(data:CheckinSound.wav())}
+      player?.currentTime = 0
+      player?.volume = 0.7
+      player?.prepareToPlay()
+      player?.play()
+    } catch { /* Sound failure must never undo a saved check-in or disable haptics. */ }
+    first.impactOccurred(intensity:0.6)
+    let followup = DispatchWorkItem { [weak self] in
+      guard UIApplication.shared.applicationState == .active else {return}
+      self?.second.impactOccurred(intensity:0.85)
+    }
+    pending = followup
+    DispatchQueue.main.asyncAfter(deadline:.now()+0.18,execute:followup)
   }
 }
 

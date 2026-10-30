@@ -50,3 +50,8 @@ export function clearWidgetSnapshot() {
 }
 
 export const getWidgetDiagnostics = async () => bridge?.widgetDiagnostics ? bridge.widgetDiagnostics() : {unavailable:true};
+
+// Feedback is optional on older installed native builds; it must not affect saving.
+export async function playCheckinSuccess() {
+  try {await bridge?.playCheckinSuccess?.();} catch { /* The record is already saved. */ }
+}

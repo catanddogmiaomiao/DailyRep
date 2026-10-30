@@ -176,3 +176,9 @@ The installed Xcode AppIntents metadata processor also completed successfully ag
 Each visible plan row now shows its elapsed plan day and goal days, with a compact progress bar, on small, medium and large widgets. A separate line retains trained-day count and today's completion/rest status. This distinguishes calendar plan progress from completed training days. Future plans say not started. The original widget identifiers, intent compatibility and local snapshot provider remain unchanged. Medium layout uses tighter spacing to retain two plan rows and the overflow link.
 
 Validation: arm64 iOS17 widget compilation passed without diagnostics; all seven offscreen rendering cases passed, and small/medium/large previews were visually reviewed. Local Xcode sources have been regenerated. Physical-device appearance requires installing this build.
+
+## Check-in success sound and haptics (2026-10-30)
+
+After POST /records succeeds, the iPhone app triggers a short original low two-hit sound and two UIKit impact pulses 180ms apart. Feedback is nonblocking and optional on old native builds; save errors, opening forms, refreshes and deletions do not trigger it. Native playback respects Silent mode, mixes with existing audio, skips background execution, and suppresses overlapping duplicate triggers. The locally synthesized mono PCM sound requires no download, media permissions, new package or Pod registration.
+
+Validation: all 30 tests, TypeScript, the actual DailyRepNative Swift compiler invocation with Expo dependencies, and the iOS Hermes export passed. A test compiles the actual Swift synthesis and checks valid WAV framing, two distinct hits, bounded amplitude and silent tail. Preview exported to outputs/checkin-dongdong.wav outside the repository. Physical iPhone listening and haptic feel require installing this native build.
