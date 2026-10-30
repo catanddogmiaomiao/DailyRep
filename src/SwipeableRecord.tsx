@@ -1,5 +1,6 @@
+import {FeedbackPressable as Pressable} from "./FeedbackPressable";
 import React, {useEffect, useRef, useState} from "react";
-import {ActivityIndicator, Animated, Image, PanResponder, Pressable, StyleSheet, Text, View} from "react-native";
+import {ActivityIndicator, Animated, Image, PanResponder, StyleSheet, Text, View} from "react-native";
 import {DELETE_ACTION_WIDTH, createSwipeGesture} from "./swipe";
 
 type Props = {

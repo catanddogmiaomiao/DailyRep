@@ -114,6 +114,7 @@ public class DailyRepModule: Module {
       result["legacyWidgetInstalled"]=widgets.contains{$0.kind == "DailyRepProgress"}
       return result
     }
+    AsyncFunction("playInteraction") { (kind:String) in CheckinFeedback.shared.interact(kind) }.runOnQueue(.main)
     AsyncFunction("playCheckinSuccess") { CheckinFeedback.shared.play() }.runOnQueue(.main)
     AsyncFunction("refreshWidgets") { WidgetCenter.shared.reloadAllTimelines() }
     AsyncFunction("copyString") { (text: String) in UIPasteboard.general.string = text }.runOnQueue(.main)
@@ -133,19 +134,31 @@ public class DailyRepModule: Module {
 
 // A short original two-hit sound, generated locally; no network or bundled media needed.
 enum CheckinSound {
-  static func wav() -> Data {
+  static func wav(kind:String="success") -> Data {
     let rate = 22050
-    let count = Int(Double(rate) * 0.54)
+    let hits:[(Double,Double,Double)]
+    let duration:Double
+    let decay:Double
+    switch kind {
+    case "tap": hits=[(0,360,0.22)];duration=0.07;decay=65
+    case "selection": hits=[(0,450,0.16)];duration=0.055;decay=80
+    case "confirm": hits=[(0,220,0.3),(0.09,330,0.32)];duration=0.24;decay=35
+    case "delete": hits=[(0,130,0.34)];duration=0.14;decay=35
+    case "error": hits=[(0,200,0.3),(0.11,150,0.3)];duration=0.30;decay=35
+    default: hits=[(0,146,0.65),(0.18,116,0.78)];duration=0.54;decay=19
+    }
+    let count = Int(Double(rate) * duration)
     var pcm = Data(capacity:count * 2)
     for i in 0..<count {
       let t = Double(i) / Double(rate)
       var value = 0.0
-      for (start, frequency, gain) in [(0.0,146.0,0.65),(0.18,116.0,0.78)] {
+      for (start, frequency, gain) in hits {
         let x = t - start
-        if x >= 0 && x < 0.30 {
+        let tail = min(0.30,duration - start)
+        if x >= 0 && x < tail {
           let attack = min(1,x / 0.006)
-          let release = min(1,(0.30 - x) / 0.035)
-          let envelope = attack * release * exp(-x * 19)
+          let release = min(1,(tail - x) / min(0.035,tail / 3))
+          let envelope = attack * release * exp(-x * decay)
           let phase = 2 * Double.pi * (frequency * x + 16 * (1 - exp(-x * 35)) / 35)
           value += gain * envelope * (sin(phase) + 0.22 * sin(2 * phase) + 0.08 * sin(3 * phase))
         }
@@ -167,6 +180,10 @@ enum CheckinSound {
 private final class CheckinFeedback {
   static let shared = CheckinFeedback()
   private var player: AVAudioPlayer?
+  private var sounds:[String:AVAudioPlayer] = [:]
+  private var lastInteraction:TimeInterval = -1
+  private let selection = UISelectionFeedbackGenerator()
+  private let notification = UINotificationFeedbackGenerator()
   private let first = UIImpactFeedbackGenerator(style:.medium)
   private let second = UIImpactFeedbackGenerator(style:.soft)
   private var lastPlayed: TimeInterval = -1
@@ -178,17 +195,7 @@ private final class CheckinFeedback {
     lastPlayed = now
     pending?.cancel()
     first.prepare();second.prepare()
-    // Respect Silent mode, and leave music/podcasts playing alongside the effect.
-    do {
-      let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.ambient,mode:.default,options:[.mixWithOthers])
-      try session.setActive(true)
-      if player == nil {player = try AVAudioPlayer(data:CheckinSound.wav())}
-      player?.currentTime = 0
-      player?.volume = 0.7
-      player?.prepareToPlay()
-      player?.play()
-    } catch { /* Sound failure must never undo a saved check-in or disable haptics. */ }
+    sound("success",volume:0.7)
     first.impactOccurred(intensity:0.6)
     let followup = DispatchWorkItem { [weak self] in
       guard UIApplication.shared.applicationState == .active else {return}
@@ -197,6 +204,39 @@ private final class CheckinFeedback {
     pending = followup
     DispatchQueue.main.asyncAfter(deadline:.now()+0.18,execute:followup)
   }
+  func interact(_ kind:String) {
+    guard ["tap","selection","confirm","delete","error"].contains(kind),
+      UIApplication.shared.applicationState == .active else {return}
+    let now = ProcessInfo.processInfo.systemUptime
+    // Coalesce nested presses/rapid picker events, and preserve the full success flourish.
+    guard now - lastPlayed > 0.6 else {return}
+    if ["tap","selection"].contains(kind),now - lastInteraction <= 0.085 {return}
+    lastInteraction = now
+    switch kind {
+    case "selection": selection.selectionChanged()
+    case "confirm": notification.notificationOccurred(.success)
+    case "error": notification.notificationOccurred(.error)
+    case "delete": second.impactOccurred(intensity:0.5)
+    default: second.impactOccurred(intensity:0.35)
+    }
+    sound(kind,volume:kind == "selection" ? 0.32 : 0.45)
+  }
+  private func sound(_ kind:String,volume:Float) {
+    do {
+      // Ambient respects Silent mode and mixes with music/podcasts.
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(.ambient,mode:.default,options:[.mixWithOthers])
+      try session.setActive(true)
+      if sounds[kind] == nil {sounds[kind] = try AVAudioPlayer(data:CheckinSound.wav(kind:kind))}
+      player?.stop()
+      player = sounds[kind]
+      player?.currentTime = 0
+      player?.volume = volume
+      player?.prepareToPlay()
+      player?.play()
+    } catch { /* Feedback cannot affect saving or navigation. Haptics still work. */ }
+  }
+
 }
 
 // WIDGET_SNAPSHOT_STORE

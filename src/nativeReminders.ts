@@ -55,3 +55,8 @@ export const getWidgetDiagnostics = async () => bridge?.widgetDiagnostics ? brid
 export async function playCheckinSuccess() {
   try {await bridge?.playCheckinSuccess?.();} catch { /* The record is already saved. */ }
 }
+
+export type InteractionFeedback = "tap" | "selection" | "confirm" | "delete" | "error";
+export async function playInteraction(kind:InteractionFeedback="tap") {
+  try {await bridge?.playInteraction?.(kind);} catch { /* Optional sensory feedback cannot block UI actions. */ }
+}

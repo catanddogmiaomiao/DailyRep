@@ -1,5 +1,6 @@
+import {FeedbackPressable as Pressable} from "./FeedbackPressable";
 import React from "react";
-import {Pressable, StyleSheet, Text, TextInput, View} from "react-native";
+import {StyleSheet, Text, TextInput, View} from "react-native";
 import {Ionicons} from "@expo/vector-icons";
 
 export function SetEditor({values, onChange, disabled = false}: {
@@ -14,12 +15,12 @@ export function SetEditor({values, onChange, disabled = false}: {
         onChangeText={text => onChange(values.map((v,i) => i === index ? text : v))}
         placeholder="个数" placeholderTextColor="#8b8b8b" style={styles.input} />
       <Text style={styles.text}>个</Text>
-      {values.length > 1 && <Pressable accessibilityRole="button" accessibilityLabel={`移除第${index+1}组`} disabled={disabled}
+      {values.length > 1 && <Pressable feedback="selection" accessibilityRole="button" accessibilityLabel={`移除第${index+1}组`} disabled={disabled}
         style={styles.remove} onPress={() => onChange(values.filter((_,i) => i !== index))}>
         <Ionicons name="close" size={20} color="#e8dcc8" />
       </Pressable>}
     </View>)}
-    {values.length < 100 && <Pressable accessibilityRole="button" disabled={disabled} style={styles.add} onPress={() => onChange([...values,""])}>
+    {values.length < 100 && <Pressable feedback="selection" accessibilityRole="button" disabled={disabled} style={styles.add} onPress={() => onChange([...values,""])}>
       <Ionicons name="add" size={20} color="#c6a75e" /><Text style={styles.text}>添加一组</Text>
     </Pressable>}
     <Text style={styles.text}>{values.length} 组 · 合计 {values.reduce((sum,v) => sum+(Number(v)||0),0)} 个</Text>

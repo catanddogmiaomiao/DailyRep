@@ -1,7 +1,9 @@
+import {FeedbackPressable as Pressable} from "./FeedbackPressable";
 import React,{useRef,useState} from 'react';
-import {ActivityIndicator,Alert,Linking,Pressable,Share,StyleSheet,Text,View} from 'react-native';
+import {ActivityIndicator,Alert,Linking,Share,StyleSheet,Text,View} from 'react-native';
 import {File,Paths} from 'expo-file-system';
 import {fetch as expoFetch} from 'expo/fetch';
+import {playInteraction} from './nativeReminders';
 import {recordShareText,xComposerURL} from './share';
 
 export function RecordShareActions({record,apiURL,token}:{record:any;apiURL:string;token:string}) {
@@ -28,7 +30,7 @@ export function RecordShareActions({record,apiURL,token}:{record:any;apiURL:stri
     }finally{clearTimeout(timer);}
     await Share.share({message,url:file!.uri},{subject:'dailyRep运动打卡',tintColor:'#c6a75e'});
    }
-  }catch(e:any){Alert.alert('分享未完成',e.name==='AbortError'?'照片读取超时，请检查网络后重试':e.message||'请稍后重试');}
+  }catch(e:any){void playInteraction('error');Alert.alert('分享未完成',e.name==='AbortError'?'照片读取超时，请检查网络后重试':e.message||'请稍后重试');}
   finally{try{if(file?.exists)file.delete();}catch{}locked.current=false;setBusy(false);}
  }
  return <View style={styles.row}>

@@ -1,15 +1,16 @@
+import {FeedbackPressable as Pressable} from "./FeedbackPressable";
 import React, {useEffect,useState} from "react";
-import {Alert,ActivityIndicator,Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from "react-native";
+import {Alert,ActivityIndicator,Modal,ScrollView,StyleSheet,Switch,Text,TextInput,View} from "react-native";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {Ionicons} from "@expo/vector-icons";
 import {addDays,dayDistance,SPORT_NAMES,repeatLabel,dateInZone} from "./plans";
-import {requestReminderPermission,notificationStatus,openNotificationSettings,reminderBridgeAvailable,getWidgetDiagnostics,refreshWidgets} from "./nativeReminders";
+import {requestReminderPermission,notificationStatus,openNotificationSettings,reminderBridgeAvailable,getWidgetDiagnostics,refreshWidgets,playInteraction} from "./nativeReminders";
 export type TrainingPlan = any;
 export type PlanAPI = (route:string,options?:RequestInit)=>Promise<any>;
 const sportName=(key:string)=>(SPORT_NAMES as Record<string,string>)[key];
 const keyOf=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const button=(label:string,onPress:()=>void,chosen=false,disabled=false)=><Pressable key={label} accessibilityRole="button" disabled={disabled} onPress={onPress} style={[p.button,chosen&&p.chosen,disabled&&{opacity:0.4}]}><Text style={chosen?p.chosenText:p.text}>{label}</Text></Pressable>;
+const button=(label:string,onPress:()=>void,chosen=false,disabled=false)=><Pressable feedback="selection" key={label} accessibilityRole="button" disabled={disabled} onPress={onPress} style={[p.button,chosen&&p.chosen,disabled&&{opacity:0.4}]}><Text style={chosen?p.chosenText:p.text}>{label}</Text></Pressable>;
 export function PlanSummary({plan,onPress}:{plan:TrainingPlan;onPress:()=>void}) {
   const progress=plan.progress;
   return <Pressable accessibilityRole="button" onPress={onPress} style={p.card}>
@@ -32,8 +33,8 @@ export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onClose,onCh
   useEffect(()=>{if(visible)inspectWidget();},[visible]);
   async function action(plan:TrainingPlan,body:any) {
     if(busy)return;setBusy(true);setError('');
-    try {const saved=await api('/plans/'+plan.id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:plan.revision})});onPlanSaved(saved);await onChanged();}
-    catch(e:any){setError(e.message);}finally{setBusy(false);}
+    try {const saved=await api('/plans/'+plan.id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:plan.revision})});onPlanSaved(saved);void playInteraction("confirm");await onChanged();}
+    catch(e:any){void playInteraction("error");setError(e.message);}finally{setBusy(false);}
   }
   return <Modal visible={visible} animationType="slide" onRequestClose={()=>{if(!busy)onClose();}}>
     <View style={{flex:1,backgroundColor:'#132138',paddingTop:inset.top,paddingBottom:inset.bottom,paddingLeft:inset.left,paddingRight:inset.right}}>
@@ -44,8 +45,8 @@ export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onClose,onCh
           setBusy(true);setError('');try {
             if(input.reminderEnabled)setPermission(await requestReminderPermission());
             const saved=await api(editing?'/plans/'+editing.id:'/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(editing?{...input,action:'edit',revision:editing.revision}:input)});
-            onPlanSaved(saved);setEditing(undefined);await onChanged();
-          }catch(e:any){setError(e.message);}finally{setBusy(false);}
+            onPlanSaved(saved);setEditing(undefined);void playInteraction("confirm");await onChanged();
+          }catch(e:any){void playInteraction("error");setError(e.message);}finally{setBusy(false);}
         }}/> : <>
           <Text style={p.muted}>计划可设可不设。每个项目可有一个进行中的长期计划，未关联计划的打卡照常统计。</Text>
           {button('＋ 设置长期计划',()=>setEditing(null),true,busy)}
@@ -99,10 +100,10 @@ function PlanForm({plan,busy,onSave}:{plan:any;busy:boolean;onSave:(data:any)=>v
     <View style={p.row}><Text style={p.text}>每隔</Text><TextInput accessibilityLabel="重复间隔" style={[p.input,{width:90}]} keyboardType="number-pad" value={String(repeat.interval)} onChangeText={v=>setRepeat({...repeat,interval:v===''?'':Number(v)})}/><Text style={p.text}>{({daily:'天',weekly:'周',monthly:'月',yearly:'年'} as Record<string,string>)[repeat.frequency]}（2周即隔周）</Text></View>
     {repeat.frequency==='weekly'&&<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:6}}>{[1,2,3,4,5,6,0].map(day=>button('周'+'日一二三四五六'[day],()=>setRepeat({...repeat,weekdays:repeat.weekdays.includes(day)?repeat.weekdays.filter((d:number)=>d!==day):[...repeat.weekdays,day]}),repeat.weekdays.includes(day)))}</ScrollView>}
     {repeat.frequency==='monthly'&&<><View style={p.wrap}>{[['date','同起始日'],['last','每月末日'],['ordinal','同序号星期']].map(([key,label])=>button(label,()=>setRepeat({...repeat,monthMode:key}),repeat.monthMode===key))}</View><Text style={p.muted}>同起始日遇到不存在的日期会跳过，例如每月31日不会在2月触发。</Text></>}
-    <View style={p.row}><Text style={p.label}>系统提醒</Text><Switch value={remind} onValueChange={setRemind} trackColor={{true:'#c6a75e'}}/></View>
+    <View style={p.row}><Text style={p.label}>系统提醒</Text><Switch value={remind} onValueChange={value=>{void playInteraction("selection");setRemind(value);}} trackColor={{true:'#c6a75e'}}/></View>
     {remind&&button(time,()=>setPicker('time'))}
     <Text style={p.muted}>以 {zone} 的日期和时间执行。提醒会提前安排到系统，打开App或打卡后自动续排。</Text>
-    {picker&&<View>{button('完成选择',()=>setPicker(null))}<DateTimePicker mode={picker==='time'?'time':'date'} display="spinner" themeVariant="dark" value={date} onChange={(_,value)=>{if(value){if(picker==='time')setTime(`${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`);else if(picker==='end')setEnd(keyOf(value));else setStart(keyOf(value));}}}/></View>}
+    {picker&&<View>{button('完成选择',()=>setPicker(null))}<DateTimePicker mode={picker==='time'?'time':'date'} display="spinner" themeVariant="dark" value={date} onChange={(event,value)=>{if(value&&event.type==="set"){void playInteraction("selection");if(picker==='time')setTime(`${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`);else if(picker==='end')setEnd(keyOf(value));else setStart(keyOf(value));}}}/></View>}
     {button('保存计划',()=>onSave({sport,title:title.trim()||`${sportName(sport)}${count}天计划`,titleAuto:!title.trim()||!!(plan?.titleAuto&&title===plan.title),startDate:start,endDate:end,endMode,goalDays:count,repeat,reminderTime:time,reminderEnabled:remind,timeZone:zone}),true,busy)}
   </>;
 }

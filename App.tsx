@@ -1,3 +1,4 @@
+import {FeedbackPressable as Pressable} from "./src/FeedbackPressable";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -6,7 +7,6 @@ import {
   ImageBackground,
   Modal,
   Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -29,7 +29,7 @@ import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
 import {PlansPanel, PlanSummary} from "./src/PlansPanel";
 import {dateInZone, isDue, matchesPlan, planProgress} from "./src/plans";
-import {syncReminders, restoreCachedReminders, clearDeviceReminders, syncWidgetSnapshot, clearWidgetSnapshot, listenToNotifications, lastNotification, playCheckinSuccess} from "./src/nativeReminders";
+import {syncReminders, restoreCachedReminders, clearDeviceReminders, syncWidgetSnapshot, clearWidgetSnapshot, listenToNotifications, lastNotification, playCheckinSuccess, playInteraction} from "./src/nativeReminders";
 import {SetEditor} from "./src/SetEditor";
 import {SwipeableRecord, RecordThumbnail} from "./src/SwipeableRecord";
 import {RecordShareActions} from "./src/RecordShareActions";
@@ -109,9 +109,10 @@ function App() {
       {text: "删除", style: "destructive", onPress: async () => {
         try {
           await api("/records/" + record.id, {method: "DELETE"});
+          void playInteraction("delete");
           const next=records.filter(r=>r.id!==record.id);setRecords(next);setPlans(previous=>previous.map(p=>({...p,progress:planProgress(p,next)})));
           await refresh();
-        } catch (e: any) {setError(e.message);}
+        } catch (e: any) {void playInteraction("error");setError(e.message);}
       }},
     ]);
   }
@@ -418,6 +419,7 @@ function App() {
                 {(["week", "month", "year"] as Period[]).map((p, i) => (
                   <Pressable
                     key={p}
+                    feedback="selection"
                     style={[s.tab, p === period && s.activeTab]}
                     onPress={() => {
                       setPeriod(p);
@@ -432,7 +434,7 @@ function App() {
               </View>
               <View style={[s.row, { marginVertical: 20 }]}>
                 <Pressable
-                  accessibilityLabel="上一周期"
+                  feedback="selection" accessibilityLabel="上一周期"
                   accessibilityRole="button"
                   hitSlop={8}
                   style={s.iconBtn}
@@ -459,7 +461,7 @@ function App() {
                         )}
                 </Text>
                 <Pressable
-                  accessibilityLabel="下一周期"
+                  feedback="selection" accessibilityLabel="下一周期"
                   accessibilityRole="button"
                   hitSlop={8}
                   style={s.iconBtn}
@@ -696,10 +698,12 @@ function Login({
               style={[s.gold, { marginTop: 28, opacity: busy ? 0.6 : 1 }]}
               onPress={async () => {
                 if (!email.trim() || !password) {
+                  void playInteraction("error");
                   setErr("请输入邮箱和密码");
                   return;
                 }
                 if (register && (password.length < 8 || password !== confirmPassword || !setupCode.trim())) {
+                  void playInteraction("error");
                   setErr('请设置至少8位密码，确认两次输入一致，并填写邀请码');
                   return;
                 }
@@ -707,7 +711,9 @@ function Login({
                 setErr("");
                 try {
                   await onLogin(email.trim(), password, register ? {setupCode: setupCode.trim()} : undefined);
+                  void playInteraction("confirm");
                 } catch (e: any) {
+                  void playInteraction("error");
                   setErr(e.message);
                 } finally {
                   setBusy(false);
@@ -817,7 +823,7 @@ function CategoryPicker({options, value, onChange, disabled = false}: {
       <Ionicons name={open ? "chevron-up" : "chevron-down"} size={20} color="#c6a75e" />
     </Pressable>
     {open && !disabled && <View style={{backgroundColor: "#26334a", borderRadius: 12, marginTop: 4}}>
-      {options.map(option => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{selected: option.value === value}} onPress={() => {onChange(option.value); setOpen(false);}} style={[s.row, {minHeight: 52, paddingHorizontal: 16}]}>
+      {options.map(option => <Pressable feedback="selection" key={option.value} accessibilityRole="button" accessibilityState={{selected: option.value === value}} onPress={() => {onChange(option.value); setOpen(false);}} style={[s.row, {minHeight: 52, paddingHorizontal: 16}]}>
         <Text style={{color: option.value === value ? "#c6a75e" : "#e8dcc8", fontSize: 16}}>{option.label}</Text>
         {option.value === value && <Ionicons name="checkmark" size={20} color="#c6a75e" />}
       </Pressable>)}
@@ -931,6 +937,7 @@ function Checkin({
       duration > 86400 ||
       time > new Date()
     ) {
+      void playInteraction("error");
       setError("请检查运动量、时长及时间，不能选择未来时间");
       return;
     }
@@ -953,6 +960,7 @@ function Checkin({
         } as any);
       await onSave(data);
     } catch (e: any) {
+      void playInteraction("error");
       setError(e.message);
     } finally {
       setBusy(false);
@@ -1022,7 +1030,7 @@ function Checkin({
                   themeVariant="dark"
                   onChange={(event, date) => {
                     if (Platform.OS === "android") setPicker(null);
-                    if (date) setTime(date);
+                    if (date && event.type === "set") {void playInteraction("selection");setTime(date);}
                   }}
                 />
               </View>
