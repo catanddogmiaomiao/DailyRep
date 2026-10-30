@@ -101,6 +101,13 @@ public class DailyRepModule: Module {
       try WidgetSnapshotStore.clear()
       WidgetCenter.shared.reloadAllTimelines()
     }
+    AsyncFunction("widgetDiagnostics") { () async throws -> [String:Any] in
+      var result=try WidgetSnapshotStore.diagnostics()
+      let widgets=try await WidgetCenter.shared.getCurrentConfigurations()
+      result["currentWidgetInstalled"]=widgets.contains{$0.kind == "DailyRepPlansV3"}
+      result["legacyWidgetInstalled"]=widgets.contains{$0.kind == "DailyRepProgress"}
+      return result
+    }
     AsyncFunction("refreshWidgets") { WidgetCenter.shared.reloadAllTimelines() }
     AsyncFunction("copyString") { (text: String) in UIPasteboard.general.string = text }.runOnQueue(.main)
     AsyncFunction("openNotificationSettings") {
@@ -124,23 +131,23 @@ import Security
 // Both targets explicitly share only this snapshot, never the app's login token.
 enum WidgetSnapshotStore {
   private static let service = "dailyrep.widget.snapshot"
-  private static func query() throws -> [String: Any] {
+  private static func query(account:String="plans") throws -> [String: Any] {
     guard let group = Bundle.main.object(forInfoDictionaryKey: "DailyRepWidgetKeychainGroup") as? String,
           !group.isEmpty, !group.contains("$(") else {
       throw NSError(domain:"DailyRepWidget",code:1,userInfo:[NSLocalizedDescriptionKey:"小组件共享配置缺失，请重新安装更新版本"])
     }
     return [kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:service,
-            kSecAttrAccount as String:"plans",kSecAttrAccessGroup as String:group]
+            kSecAttrAccount as String:account,kSecAttrAccessGroup as String:group]
   }
-  static func save(_ data: Data) throws {
-    let key = try query()
+  static func save(_ data: Data, account:String="plans") throws {
+    let key = try query(account:account)
     let changes: [String:Any] = [kSecValueData as String:data,kSecAttrAccessible as String:kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
     var status = SecItemUpdate(key as CFDictionary,changes as CFDictionary)
     if status == errSecItemNotFound {status = SecItemAdd(key.merging(changes){_,new in new} as CFDictionary,nil)}
     guard status == errSecSuccess else {throw failure(status)}
   }
-  static func read() throws -> Data? {
-    var key = try query(); key[kSecReturnData as String] = true;key[kSecMatchLimit as String] = kSecMatchLimitOne
+  static func read(account:String="plans") throws -> Data? {
+    var key = try query(account:account); key[kSecReturnData as String] = true;key[kSecMatchLimit as String] = kSecMatchLimitOne
     var result: CFTypeRef?
     let status = SecItemCopyMatching(key as CFDictionary,&result)
     if status == errSecItemNotFound {return nil}
@@ -150,6 +157,20 @@ enum WidgetSnapshotStore {
   static func clear() throws {
     let status = SecItemDelete(try query() as CFDictionary)
     guard status == errSecSuccess || status == errSecItemNotFound else {throw failure(status)}
+    SecItemDelete(try query(account:"widget-health") as CFDictionary)
+  }
+  static func recordRead(state:String,count:Int) {
+    let value:[String:Any] = ["state":state,"count":count,"readAt":ISO8601DateFormatter().string(from:Date())]
+    if let bytes = try? JSONSerialization.data(withJSONObject:value) {try? save(bytes,account:"widget-health")}
+  }
+  static func diagnostics() throws -> [String:Any] {
+    var result:[String:Any] = ["appPlanCount":0]
+    if let data=try read(),let json=try JSONSerialization.jsonObject(with:data) as? [String:Any] {
+      result["appPlanCount"]=(json["plans"] as? [[String:Any]])?.count ?? 0
+      result["savedAt"]=json["updatedAt"]
+    }
+    if let data=try read(account:"widget-health"),let json=try JSONSerialization.jsonObject(with:data) as? [String:Any] {result["widgetRead"]=json}
+    return result
   }
   private static func failure(_ status: OSStatus) -> NSError {
     NSError(domain:"DailyRepWidget",code:Int(status),userInfo:[NSLocalizedDescriptionKey:status == errSecInteractionNotAllowed ? "请解锁iPhone并打开dailyRep同步小组件" : "小组件同步失败（\(status)），请重新安装更新版本并打开App"])

@@ -9,7 +9,8 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "node --test src/*.test.js",
-    "postinstall": "node scripts/apply-native-patches.cjs"
+    "postinstall": "node scripts/apply-native-patches.cjs",
+    "test:widget-render": "node scripts/verify-widget-render.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",

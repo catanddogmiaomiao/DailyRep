@@ -4,7 +4,7 @@ import {useSafeAreaInsets} from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {Ionicons} from "@expo/vector-icons";
 import {addDays,dayDistance,SPORT_NAMES,repeatLabel,dateInZone} from "./plans";
-import {requestReminderPermission,notificationStatus,openNotificationSettings,reminderBridgeAvailable} from "./nativeReminders";
+import {requestReminderPermission,notificationStatus,openNotificationSettings,reminderBridgeAvailable,getWidgetDiagnostics,refreshWidgets} from "./nativeReminders";
 export type TrainingPlan = any;
 export type PlanAPI = (route:string,options?:RequestInit)=>Promise<any>;
 const sportName=(key:string)=>(SPORT_NAMES as Record<string,string>)[key];
@@ -22,9 +22,14 @@ export function PlanSummary({plan,onPress}:{plan:TrainingPlan;onPress:()=>void})
 }
 export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onClose,onCheckin,coverage}:{visible:boolean;plans:TrainingPlan[];api:PlanAPI;onChanged:()=>Promise<void>;onPlanSaved:(plan:any)=>void;onClose:()=>void;onCheckin:(sport:string,planId:string)=>void;coverage:any}) {
   const inset=useSafeAreaInsets();
-  const [editing,setEditing]=useState<TrainingPlan|undefined|null>(undefined),[busy,setBusy]=useState(false),[error,setError]=useState(''),[permission,setPermission]=useState('undetermined');
+  const [editing,setEditing]=useState<TrainingPlan|undefined|null>(undefined),[busy,setBusy]=useState(false),[error,setError]=useState(''),[permission,setPermission]=useState('undetermined'),[widgetInfo,setWidgetInfo]=useState<any>(null);
   useEffect(()=>{if(visible)notificationStatus().then(setPermission).catch(()=>setPermission('unavailable'));},[visible,coverage]);
   useEffect(()=>{if(!visible){setEditing(undefined);setError('');}},[visible]);
+  async function inspectWidget() {
+    try {await refreshWidgets();setWidgetInfo(await getWidgetDiagnostics());}
+    catch(e:any){setWidgetInfo({error:e.message});}
+  }
+  useEffect(()=>{if(visible)inspectWidget();},[visible]);
   async function action(plan:TrainingPlan,body:any) {
     if(busy)return;setBusy(true);setError('');
     try {const saved=await api('/plans/'+plan.id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:plan.revision})});onPlanSaved(saved);await onChanged();}
@@ -44,7 +49,15 @@ export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onClose,onCh
         }}/> : <>
           <Text style={p.muted}>计划可设可不设。每个项目可有一个进行中的长期计划，未关联计划的打卡照常统计。</Text>
           {button('＋ 设置长期计划',()=>setEditing(null),true,busy)}
-          <Text style={p.muted}>小组件自动显示本App中的计划，无需连接码。打开App或打卡后会同步；添加大号“健身坚持”可同时查看四项计划。</Text>
+          <Text style={p.muted}>小组件自动显示本App中的计划，无需连接码。更新后添加大号“健身计划列表”，可同时查看四项计划。</Text>
+          {button('检查小组件',inspectWidget,false,busy)}
+          {widgetInfo&&<View style={p.card}>
+            {widgetInfo.unavailable?<Text style={p.text}>当前安装包未包含小组件诊断，请重新Run安装新版。</Text>:widgetInfo.error?<Text style={p.error}>{widgetInfo.error}</Text>:<>
+              <Text style={p.text}>App已保存 {widgetInfo.appPlanCount} 项计划供小组件读取。</Text>
+              <Text style={p.muted}>{widgetInfo.currentWidgetInstalled?'已检测到新版“健身计划列表”。':widgetInfo.legacyWidgetInstalled?'桌面仍是旧版组件，请移除后添加“健身计划列表”。':'尚未检测到新版小组件，请在主屏幕添加“健身计划列表”。'}</Text>
+              <Text style={p.muted}>{widgetInfo.widgetRead?`组件最近读取：${widgetInfo.widgetRead.state==='loaded'?widgetInfo.widgetRead.count+'项计划':widgetInfo.widgetRead.state==='empty'?'暂无同步数据':'读取失败'} · ${new Date(widgetInfo.widgetRead.readAt).toLocaleTimeString('zh-CN')}`:'组件尚未回报读取结果。添加后可再次检查。'}</Text>
+            </>}
+          </View>}
           {permission==='denied'&&<View style={p.card}><Text style={p.text}>系统通知未开启，计划仍可正常使用。</Text>{button('前往系统设置开启提醒',()=>openNotificationSettings())}</View>}
           {permission==='unavailable'&&<Text style={p.muted}>此安装包尚未包含提醒模块。请在Xcode安装更新后的原生版本。</Text>}
           {coverage?.scheduled>0&&<Text style={p.muted}>系统已安排 {coverage.scheduled} 条提醒，最远至 {new Date(coverage.through).toLocaleDateString('zh-CN')}。每次打开或打卡会自动补齐后续提醒。</Text>}

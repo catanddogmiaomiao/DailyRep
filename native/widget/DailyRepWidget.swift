@@ -1,11 +1,6 @@
 import WidgetKit
 import SwiftUI
-import AppIntents
 
-struct DailyRepConfiguration: WidgetConfigurationIntent {
-  static var title: LocalizedStringResource = "健身坚持"
-  static var description = IntentDescription("自动显示dailyRep中已同步的全部计划，无需填写连接码。")
-}
 struct PlanData: Decodable, Identifiable {
   var id: String { planId }
   let planId: String
@@ -14,7 +9,6 @@ struct PlanData: Decodable, Identifiable {
   let status: String
   let timeZone: String?
   let progress: Progress
-  let updatedAt: String
   struct Progress: Decodable {
     let today: String?
     let completedDays: Int
@@ -36,24 +30,26 @@ struct DailyRepEntry: TimelineEntry {
   let message: String?
   let stale: Bool
 }
-struct Provider: AppIntentTimelineProvider {
+struct Provider: TimelineProvider {
   func placeholder(in context: Context) -> DailyRepEntry { DailyRepEntry(date: .now, data: nil, message: "每天进步一点点", stale: false) }
-  func snapshot(for configuration: DailyRepConfiguration, in context: Context) async -> DailyRepEntry {
-    if context.isPreview { return placeholder(in: context) }
-    return await load(configuration)
+  func getSnapshot(in context: Context, completion: @escaping (DailyRepEntry) -> Void) {
+    if context.isPreview {completion(placeholder(in:context));return}
+    DispatchQueue.global(qos:.userInitiated).async {completion(load())}
   }
-  func timeline(for configuration: DailyRepConfiguration, in context: Context) async -> Timeline<DailyRepEntry> {
-    let entry = await load(configuration)
-    return Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(1800)))
+  func getTimeline(in context: Context, completion: @escaping (Timeline<DailyRepEntry>) -> Void) {
+    DispatchQueue.global(qos:.userInitiated).async {completion(Timeline(entries:[load()],policy:.after(Date().addingTimeInterval(1800))))}
   }
-  private func load(_ configuration: DailyRepConfiguration) async -> DailyRepEntry {
+  private func load() -> DailyRepEntry {
     do {
       guard let bytes = try WidgetSnapshotStore.read() else {
+        WidgetSnapshotStore.recordRead(state:"empty",count:0)
         return DailyRepEntry(date:.now,data:nil,message:"打开dailyRep并登录\n计划会自动同步到这里",stale:false)
       }
       let data = try JSONDecoder().decode(ProgressData.self,from:bytes)
+      WidgetSnapshotStore.recordRead(state:"loaded",count:data.plans.count)
       return DailyRepEntry(date:.now,data:data,message:nil,stale:false)
     } catch {
+      WidgetSnapshotStore.recordRead(state:"error",count:0)
       return DailyRepEntry(date:.now,data:nil,message:"请打开dailyRep同步计划\n"+error.localizedDescription,stale:false)
     }
   }
@@ -61,8 +57,11 @@ struct Provider: AppIntentTimelineProvider {
 struct DailyRepWidgetView: View {
   let entry: DailyRepEntry
   @Environment(\.widgetFamily) private var family
+  @Environment(\.widgetRenderingMode) private var renderingMode
   private let gold = Color(red: 0.776, green: 0.655, blue: 0.369)
   private let beige = Color(red: 0.910, green: 0.863, blue: 0.784)
+  private var textColor: Color { renderingMode == .fullColor ? beige : .primary }
+  private var accentColor: Color { renderingMode == .fullColor ? gold : .primary }
   private var capacity: Int { family == .systemLarge ? 4 : family == .systemMedium ? 2 : 1 }
   private var plansLink: URL { URL(string:"dailyrep://plans")! }
   private func checkinLink(_ plan: PlanData) -> URL {
@@ -83,19 +82,24 @@ struct DailyRepWidgetView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 6) {
       HStack {
-        Text("dailyRep").font(.system(size:14,weight:.bold)).foregroundStyle(gold)
+        Text("dailyRep").font(.system(size:14,weight:.bold)).foregroundStyle(accentColor)
         Spacer()
-        if let data = entry.data { Text("\(data.plans.count) 项计划").font(.caption2).foregroundStyle(beige.opacity(0.8)) }
+        if let data = entry.data { Text("\(data.plans.count) 项计划").font(.caption2).foregroundStyle(textColor.opacity(0.8)) }
       }
       if let data = entry.data, !data.plans.isEmpty {
         ForEach(Array(data.plans.prefix(capacity))) { plan in
           HStack(spacing: 10) {
             VStack(alignment:.leading,spacing:3) {
-              Text(plan.title).font(.system(size:13,weight:.semibold)).lineLimit(1).foregroundStyle(beige)
-              Text("已训练\(plan.progress.completedDays)天 · \(status(plan))").font(.system(size:10)).lineLimit(1).foregroundStyle(gold)
+              Text(plan.title).font(.system(size:13,weight:.semibold)).lineLimit(1).foregroundStyle(textColor)
+              Text("已训练\(plan.progress.completedDays)天 · \(status(plan))").font(.system(size:10)).lineLimit(1).foregroundStyle(accentColor)
               if family == .systemLarge {
-                ProgressView(value:Double(plan.progress.elapsedDays),total:Double(max(1,plan.progress.goalDays))).tint(gold)
-                Text("计划第\(plan.progress.elapsedDays)/\(plan.progress.goalDays)天").font(.system(size:9)).foregroundStyle(beige.opacity(0.7))
+                GeometryReader { geometry in
+                  ZStack(alignment:.leading) {
+                    Capsule().fill(textColor.opacity(0.15))
+                    Capsule().fill(accentColor).frame(width:geometry.size.width * min(1,max(0,Double(plan.progress.elapsedDays)/Double(max(1,plan.progress.goalDays)))))
+                  }
+                }.frame(height:4)
+                Text("计划第\(plan.progress.elapsedDays)/\(plan.progress.goalDays)天").font(.system(size:9)).foregroundStyle(textColor.opacity(0.7))
               }
             }
             .frame(maxWidth:.infinity,alignment:.leading)
@@ -106,19 +110,19 @@ struct DailyRepWidgetView: View {
               }.buttonStyle(.plain).accessibilityLabel("\(plan.title)，\(action(plan))")
             }
           }
-          .frame(maxHeight:.infinity)
+          .frame(height:family == .systemLarge ? 55 : 42)
         }
         if data.plans.count > capacity {
-          Link("还有\(data.plans.count-capacity)项 · 查看全部",destination:plansLink).font(.system(size:10)).foregroundStyle(beige)
+          Link("还有\(data.plans.count-capacity)项 · 查看全部",destination:plansLink).buttonStyle(.plain).font(.system(size:10)).foregroundStyle(textColor)
         }
       } else {
         Spacer(minLength:0)
-        Text(entry.data == nil ? (entry.message ?? "每天进步一点点") : "还没有计划\n点按设置一个长期目标").font(.caption).foregroundStyle(beige).lineLimit(4)
+        Text(entry.data == nil ? (entry.message ?? "每天进步一点点") : "还没有计划\n点按设置一个长期目标").font(.caption).foregroundStyle(textColor).lineLimit(4)
         Spacer(minLength:0)
       }
-      if entry.stale { Text("离线 · 显示上次进度").font(.system(size:9)).foregroundStyle(beige.opacity(0.65)) }
+      if entry.stale { Text("离线 · 显示上次进度").font(.system(size:9)).foregroundStyle(textColor.opacity(0.65)) }
     }
-    .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.leading)
+    .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
     .containerBackground(for:.widget) {
       LinearGradient(colors:[Color(red:0.08,green:0.13,blue:0.22),Color(red:0.17,green:0.24,blue:0.34)],startPoint:.topLeading,endPoint:.bottomTrailing)
     }
@@ -127,8 +131,8 @@ struct DailyRepWidgetView: View {
 }
 @main struct DailyRepWidget: Widget {
   var body: some WidgetConfiguration {
-    AppIntentConfiguration(kind:"DailyRepProgress",intent:DailyRepConfiguration.self,provider:Provider()) {entry in DailyRepWidgetView(entry:entry)}
-      .configurationDisplayName("健身坚持")
+    StaticConfiguration(kind:"DailyRepPlansV3",provider:Provider()) {entry in DailyRepWidgetView(entry:entry)}
+      .configurationDisplayName("健身计划列表")
       .description("计划提醒列表：大号展示四项计划，点右侧打卡打开对应训练。")
       .supportedFamilies([.systemSmall,.systemMedium,.systemLarge])
   }

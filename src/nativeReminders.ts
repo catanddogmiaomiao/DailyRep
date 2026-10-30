@@ -48,3 +48,5 @@ export function syncWidgetSnapshot(plans:any[],records:any[]) {
 export function clearWidgetSnapshot() {
   widgetChain=widgetChain.catch(()=>undefined).then(()=>bridge?.clearWidgetSnapshot?.());return widgetChain;
 }
+
+export const getWidgetDiagnostics = async () => bridge?.widgetDiagnostics ? bridge.widgetDiagnostics() : {unavailable:true};
