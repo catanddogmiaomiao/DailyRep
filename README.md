@@ -1,5 +1,7 @@
 # dailyRep · 运动打卡 App
 
+最近记录提供“分享到X”：打开X发布编辑页并填入整次打卡摘要；有照片时可点“带照片分享”，在iPhone系统面板选择X。照片先经登录鉴权下载到临时缓存，分享结束后清理。不会把私有照片地址、登录凭证、账号或计划ID放进分享文案。发布仍由用户在X确认，未安装X或X分享扩展不可用时可用浏览器文字分享。该入口需要Xcode重新Run安装更新后的App。
+
 以 iPhone 为主要目标的 Expo / React Native 个人健身打卡 App，与 [dailyRep_web](https://github.com/catanddogmiaomiao/dailyRep_web) 共用 API。深海蓝背景、海岸渐变图片、暖米色摘要与输入卡片、柔金色主操作。
 
 ## 已实现

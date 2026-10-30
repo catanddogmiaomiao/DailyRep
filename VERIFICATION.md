@@ -128,3 +128,7 @@ Installation metadata correction: widget generation now includes CFBundleName an
 - Xcode 27.1 arm64 iPhone Release build succeeded unsigned, including DailyRepNative and embedded DailyRepWidget.appex.
 - Browser test with local simulated data confirmed 100-day milestone continuation to 110 preserves start date and 100 training dates. No production test records created.
 - Device acceptance still required for notification permission/delivery, notification links and WidgetKit configuration/refresh. Nearest 60 reminders are scheduled, replenished on open/check-in; web changes require opening the iPhone app.
+
+## Record sharing (2026-10-30)
+
+All 23 Node tests and TypeScript checks passed. The iOS Hermes bundle exported successfully with Expo SDK54. Record sharing uses the complete parent session even when statistics are filtered by exercise type. Summary tests cover all swim strokes, individual sets, legacy units, bounded post length, URL encoding and omission of private photo/record/account identifiers. Photo sharing uses an authenticated fetch, local cache file and the iOS share sheet; the temporary file is deleted after completion or cancellation. No new native dependencies or permissions. Physical-device X composer/photo-extension acceptance remains unverified; no post was published during testing.

@@ -32,6 +32,7 @@ import {dateInZone, isDue, matchesPlan, planProgress} from "./src/plans";
 import {syncReminders, restoreCachedReminders, clearDeviceReminders, refreshWidgets, listenToNotifications, lastNotification} from "./src/nativeReminders";
 import {SetEditor} from "./src/SetEditor";
 import {SwipeableRecord, RecordThumbnail} from "./src/SwipeableRecord";
+import {RecordShareActions} from "./src/RecordShareActions";
 import {subtypeOptions, subtypeLabel, matchesSubtype, recordDetails, projectRecord, recordUnit, formatSets} from "./src/subtypes";
 type Sport = "running" | "swimming" | "pushups" | "abs";
 type Period = "week" | "month" | "year";
@@ -540,6 +541,7 @@ function App() {
                           · {Math.floor(r.duration / 60)}分{r.duration % 60}秒
                         </Text>
                       </Text>
+                      <RecordShareActions record={records.find(item=>item.id===r.id)||r} apiURL={API} token={token}/>
                     </Pressable>
                     <RecordThumbnail
                       uri={r.photo ? API + "/api/photos/" + r.photo : null}
