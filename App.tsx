@@ -29,7 +29,7 @@ import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
 import {PlansPanel, PlanSummary} from "./src/PlansPanel";
 import {dateInZone, isDue, matchesPlan, planProgress} from "./src/plans";
-import {syncReminders, restoreCachedReminders, clearDeviceReminders, refreshWidgets, listenToNotifications, lastNotification} from "./src/nativeReminders";
+import {syncReminders, restoreCachedReminders, clearDeviceReminders, syncWidgetSnapshot, clearWidgetSnapshot, listenToNotifications, lastNotification} from "./src/nativeReminders";
 import {SetEditor} from "./src/SetEditor";
 import {SwipeableRecord, RecordThumbnail} from "./src/SwipeableRecord";
 import {RecordShareActions} from "./src/RecordShareActions";
@@ -115,6 +115,8 @@ function App() {
       }},
     ]);
   }
+  const swipeActive=useRef(false);
+  const [scrollEnabled,setScrollEnabled]=useState(true);
   const generation = useRef(0);
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({y: 0, animated: false}); }, [page, token]);
@@ -147,7 +149,7 @@ function App() {
     setToken(null);
     setRecords([]);
     setPlans([]);setDataReady(false);setPlansVisible(false);
-    await clearDeviceReminders();
+    await Promise.all([clearDeviceReminders(),clearWidgetSnapshot()]);
     setPhoto(null);
   }
   async function refresh(auth = token, propagate = false) {
@@ -186,7 +188,7 @@ function App() {
     if(!token||!dataReady)return;
     let active=true;
     syncReminders(plans,records).then(result=>{if(active)setCoverage(result);}).catch((e:any)=>{if(active)setError("提醒同步失败："+e.message);});
-    refreshWidgets();
+    syncWidgetSnapshot(plans,records).catch((e:any)=>{if(active)setError("小组件同步失败："+e.message);});
     return()=>{active=false;};
   },[token,dataReady,plans,records]);
   useEffect(()=>{if(!token)return;const sub=AppState.addEventListener("change",state=>{if(state==="active"){refresh();lastNotification().then(data=>{if(data)routeHandler.current(data);});}});return()=>sub.remove();},[token]);
@@ -251,7 +253,9 @@ function App() {
       <StatusBar style="light" />
       <ScrollView
         ref={scrollRef}
-        onScrollBeginDrag={() => setOpenRecordId(null)}
+        scrollEnabled={scrollEnabled}
+        directionalLockEnabled
+        onScrollBeginDrag={() => {if(!swipeActive.current)setOpenRecordId(null);}}
         contentContainerStyle={s.content}
         refreshControl={
           <RefreshControl
@@ -519,6 +523,7 @@ function App() {
                 .map((r) => (
                   <SwipeableRecord key={r.id}
                     open={openRecordId === r.id}
+                    onGestureActive={active=>{swipeActive.current=active;setScrollEnabled(!active);}}
                     onOpen={() => setOpenRecordId(r.id)}
                     onClose={() => setOpenRecordId(current => current === r.id ? null : current)}
                     onDelete={() => confirmDelete(r)}

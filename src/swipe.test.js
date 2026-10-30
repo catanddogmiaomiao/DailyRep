@@ -17,3 +17,19 @@ test('left swipes only reveal a bounded action; rightward drag cannot move the c
   assert.equal(shouldRevealDelete(-60,0),true);
   assert.equal(shouldRevealDelete(-60,1),false);
 });
+
+test('horizontal drag holds responder until release, keeps delete visible, and restores scrolling',async()=>{
+ const {createSwipeGesture}=await import('./swipe.js');
+ let position=0,reveal=false;const events=[];
+ const gesture=createSwipeGesture({getPosition:()=>position,stopAnimation:()=>events.push('stop'),move:v=>{position=v;},open:()=>{reveal=true;},close:()=>{reveal=false;},active:value=>events.push(value),settle:value=>{position=value?-DELETE_ACTION_WIDTH:0;}});
+ assert.equal(gesture.onPanResponderTerminationRequest(),true);
+ gesture.onPanResponderGrant();gesture.onPanResponderMove(null,{dx:-70,dy:2});
+ assert.equal(position,-70);assert.equal(gesture.isDragging(),true);assert.equal(gesture.onPanResponderTerminationRequest(),false,'scroll view cannot steal a held horizontal drag');
+ assert.equal(reveal,true);assert.deepEqual(events,['stop',true]);
+ gesture.onPanResponderRelease(null,{dx:-70,vx:0});
+ assert.equal(position,-DELETE_ACTION_WIDTH);assert.equal(reveal,true);assert.equal(gesture.isDragging(),false);assert.equal(events.at(-1),false);
+ gesture.onPanResponderGrant();gesture.onPanResponderMove(null,{dx:65,dy:0});gesture.onPanResponderRelease(null,{dx:65,vx:1});
+ assert.equal(position,0);assert.equal(reveal,false);
+ gesture.onPanResponderGrant();gesture.onPanResponderMove(null,{dx:-80,dy:0});gesture.onPanResponderTerminate();
+ assert.equal(position,-DELETE_ACTION_WIDTH,'a system interruption preserves a substantially revealed action');assert.equal(events.at(-1),false);
+});

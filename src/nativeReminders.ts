@@ -1,6 +1,7 @@
 import {requireOptionalNativeModule} from "expo-modules-core";
 import {File,Paths} from "expo-file-system";
 import {reminderQueue} from "./plans";
+import {widgetSnapshot} from "./widgetSnapshot";
 const bridge = requireOptionalNativeModule("DailyRepNative");
 export const reminderBridgeAvailable = !!bridge;
 export const requestReminderPermission = async () => bridge ? bridge.requestPermission() : "unavailable";
@@ -31,4 +32,16 @@ export async function restoreCachedReminders() {
     if(!Array.isArray(saved.plans)||!Array.isArray(saved.records))return null;
     return await syncReminders(saved.plans,saved.records);
   }catch{return null;}
+}
+
+let widgetChain:Promise<any>=Promise.resolve();
+export function syncWidgetSnapshot(plans:any[],records:any[]) {
+  const json=JSON.stringify(widgetSnapshot(plans,records));
+  widgetChain=widgetChain.catch(()=>undefined).then(()=>{
+    if(!bridge?.syncWidgetSnapshot)throw new Error("请在Xcode重新安装包含自动同步功能的App");
+    return bridge.syncWidgetSnapshot(json);
+  });return widgetChain;
+}
+export function clearWidgetSnapshot() {
+  widgetChain=widgetChain.catch(()=>undefined).then(()=>bridge?.clearWidgetSnapshot?.());return widgetChain;
 }

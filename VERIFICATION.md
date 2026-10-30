@@ -132,3 +132,15 @@ Installation metadata correction: widget generation now includes CFBundleName an
 ## Record sharing (2026-10-30)
 
 All 23 Node tests and TypeScript checks passed. The iOS Hermes bundle exported successfully with Expo SDK54. Record sharing uses the complete parent session even when statistics are filtered by exercise type. Summary tests cover all swim strokes, individual sets, legacy units, bounded post length, URL encoding and omission of private photo/record/account identifiers. Photo sharing uses an authenticated fetch, local cache file and the iOS share sheet; the temporary file is deleted after completion or cancellation. No new native dependencies or permissions. Physical-device X composer/photo-extension acceptance remains unverified; no post was published during testing.
+
+## Plan list widget and held swipe (2026-10-30)
+
+All 24 Node tests and TypeScript checks passed. The iOS Hermes bundle exported, and the new WidgetKit Swift source typechecked and compiled to an arm64 iOS17 object using the installed iPhoneOS SDK. The full Xcode command could not access CoreSimulator/XPC workspace detection under the current sandbox; it did not complete an app build. Generated local Widget source has been updated for the next Xcode Run. Physical-device gesture and widget layout/link acceptance remains required.
+
+Regression exercises the real swipe responder controller: hold at -70 without yielding to scroll; release keeps the delete action visible; rightward swipe closes; forced interruption keeps a revealed row open and restores scrolling. Parent scrolling is disabled only while a horizontal gesture is owned.
+
+## Automatic local widget sync (2026-10-30)
+
+Replaced manual codes and widget HTTP fetches with a local shared-Keychain snapshot. Both targets use the same explicit snapshot group; each retains its own default access group first so existing SecureStore login remains in its original group. No App Groups entitlement or full-session sharing. Main-app native methods write/delete the snapshot before reloading timelines. Native store code is defined once in DailyRepModule.swift and the plugin copies the same implementation to the widget target, avoiding an additional Pod source registration step. Existing Podfile.lock and Manifest.lock remain equal.
+
+All 25 Node tests and TypeScript checks passed, including snapshot omission of credentials/photos/record details and idempotent entitlement generation with preserved login defaults. Widget and shared store compiled together into an arm64 iOS17 object, and the Hermes bundle exported. Full signed install/keychain exchange and WidgetKit rendering require Xcode/device acceptance; the sandbox still prevents a full Xcode workspace build. The local workspace contains the new source, metadata and both targets' entitlements for Run.

@@ -2,10 +2,9 @@ import React, {useEffect,useState} from "react";
 import {Alert,ActivityIndicator,Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from "react-native";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import * as SecureStore from "expo-secure-store";
 import {Ionicons} from "@expo/vector-icons";
 import {addDays,dayDistance,SPORT_NAMES,repeatLabel,dateInZone} from "./plans";
-import {requestReminderPermission,notificationStatus,openNotificationSettings,copyWidgetCode,reminderBridgeAvailable} from "./nativeReminders";
+import {requestReminderPermission,notificationStatus,openNotificationSettings,reminderBridgeAvailable} from "./nativeReminders";
 export type TrainingPlan = any;
 export type PlanAPI = (route:string,options?:RequestInit)=>Promise<any>;
 const sportName=(key:string)=>(SPORT_NAMES as Record<string,string>)[key];
@@ -31,15 +30,6 @@ export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onClose,onCh
     try {const saved=await api('/plans/'+plan.id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:plan.revision})});onPlanSaved(saved);await onChanged();}
     catch(e:any){setError(e.message);}finally{setBusy(false);}
   }
-  async function widget(plan:TrainingPlan,reset=false) {
-    setBusy(true);setError('');
-    try {
-      let code=reset?null:await SecureStore.getItemAsync('dailyrep.widget.'+plan.id);
-      if(!code){const data=await api('/widget-links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({planId:plan.id})});code=data.code;await SecureStore.setItemAsync('dailyrep.widget.'+plan.id,code!);}
-      await copyWidgetCode(code!);
-      Alert.alert('小组件连接码',`${code}\n\n${reminderBridgeAvailable?'已复制。':'请复制以上连接码。'}长按iPhone主屏幕 → 添加“健身坚持” → 长按小组件并编辑 → 粘贴连接码。\n\n仅允许读取此计划进度，不包含登录凭证或照片。`);
-    }catch(e:any){setError(e.message);}finally{setBusy(false);}
-  }
   return <Modal visible={visible} animationType="slide" onRequestClose={()=>{if(!busy)onClose();}}>
     <View style={{flex:1,backgroundColor:'#132138',paddingTop:inset.top,paddingBottom:inset.bottom,paddingLeft:inset.left,paddingRight:inset.right}}>
       <View style={[p.row,{paddingHorizontal:20,paddingVertical:8}]}>{button(editing===undefined?'关闭':'返回',()=>editing===undefined?onClose():setEditing(undefined),false,busy)}<Text style={p.title}>{editing===undefined?'长期训练计划':editing?'调整计划':'设置长期计划'}</Text><Pressable accessibilityRole="button" accessibilityLabel="刷新计划" disabled={busy} style={{width:48,minHeight:48,alignItems:"center",justifyContent:"center"}} onPress={()=>onChanged().catch((e:any)=>setError(e.message))}><Text style={p.gold}>刷新</Text></Pressable></View>
@@ -54,6 +44,7 @@ export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onClose,onCh
         }}/> : <>
           <Text style={p.muted}>计划可设可不设。每个项目可有一个进行中的长期计划，未关联计划的打卡照常统计。</Text>
           {button('＋ 设置长期计划',()=>setEditing(null),true,busy)}
+          <Text style={p.muted}>小组件自动显示本App中的计划，无需连接码。打开App或打卡后会同步；添加大号“健身坚持”可同时查看四项计划。</Text>
           {permission==='denied'&&<View style={p.card}><Text style={p.text}>系统通知未开启，计划仍可正常使用。</Text>{button('前往系统设置开启提醒',()=>openNotificationSettings())}</View>}
           {permission==='unavailable'&&<Text style={p.muted}>此安装包尚未包含提醒模块。请在Xcode安装更新后的原生版本。</Text>}
           {coverage?.scheduled>0&&<Text style={p.muted}>系统已安排 {coverage.scheduled} 条提醒，最远至 {new Date(coverage.through).toLocaleDateString('zh-CN')}。每次打开或打卡会自动补齐后续提醒。</Text>}
@@ -66,12 +57,11 @@ export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onClose,onCh
               {plan.status==='paused'?button('恢复计划',()=>action(plan,{action:'resume'}),false,busy):plan.status==='active'&&!plan.progress.ended?button('暂停',()=>Alert.alert('暂停计划','暂停时不提醒，恢复后结束日期按暂停天数顺延。已有记录保留。',[{text:'取消'},{text:'暂停',onPress:()=>action(plan,{action:'pause'})}]),false,busy):null}
               {plan.status==='active'&&button('调整安排',()=>setEditing(plan),false,busy)}
               {plan.status!=='paused'&&button('自定下一阶段',()=>Alert.prompt('继续坚持','填写新的总目标天数，例如110或150；保留原计划与打卡。',text=>action(plan,{action:'extend',goalDays:Number(text)}),'plain-text',String(plan.goalDays+30),'number-pad'),false,busy)}
-              {button('连接桌面小组件',()=>widget(plan),false,busy)}
             </View>
             <View style={p.wrap}>
               {plan.status==='active'&&button('结束此计划',()=>Alert.alert('结束计划','结束后停止提醒，已有打卡和进度保留。',[{text:'取消'},{text:'结束',onPress:()=>action(plan,{action:'finish'})}]),false,busy)}
               {plan.status==='finished'&&button('隐藏已结束计划',()=>action(plan,{action:'archive'}),false,busy)}
-              {button('重置小组件连接码',()=>Alert.alert('重置连接码','此计划原小组件需要重新填写新码。',[{text:'取消'},{text:'重置',onPress:()=>widget(plan,true)}]),false,busy)}
+
             </View>
           </View>)}
         </>}

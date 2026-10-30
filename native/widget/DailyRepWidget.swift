@@ -4,17 +4,19 @@ import AppIntents
 
 struct DailyRepConfiguration: WidgetConfigurationIntent {
   static var title: LocalizedStringResource = "健身坚持"
-  static var description = IntentDescription("在 dailyRep 的计划页面复制连接码，再粘贴到这里。连接码仅允许读取计划进度。")
-  @Parameter(title: "计划连接码") var connectionCode: String?
+  static var description = IntentDescription("自动显示dailyRep中已同步的全部计划，无需填写连接码。")
 }
-struct ProgressData: Decodable {
+struct PlanData: Decodable, Identifiable {
+  var id: String { planId }
   let planId: String
   let title: String
   let sport: String
   let status: String
+  let timeZone: String?
   let progress: Progress
   let updatedAt: String
   struct Progress: Decodable {
+    let today: String?
     let completedDays: Int
     let streak: Int
     let elapsedDays: Int
@@ -23,6 +25,10 @@ struct ProgressData: Decodable {
     let doneToday: Bool
     let ended: Bool
   }
+}
+struct ProgressData: Decodable {
+  let plans: [PlanData]
+
 }
 struct DailyRepEntry: TimelineEntry {
   let date: Date
@@ -41,28 +47,14 @@ struct Provider: AppIntentTimelineProvider {
     return Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(1800)))
   }
   private func load(_ configuration: DailyRepConfiguration) async -> DailyRepEntry {
-    let code = (configuration.connectionCode ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    guard code.count == 12 else { return DailyRepEntry(date: .now, data: nil, message: "长按小组件 → 编辑小组件\n粘贴计划连接码", stale: false) }
-    let api = Bundle.main.object(forInfoDictionaryKey: "DailyRepAPIURL") as? String ?? ""
-    guard let url = URL(string: api + "/api/widget-state") else {return DailyRepEntry(date: .now, data: nil, message: "服务地址未配置", stale: false)}
-    var request = URLRequest(url: url)
-    request.timeoutInterval = 15
-    request.setValue(code, forHTTPHeaderField: "X-DailyRep-Widget-Key")
-    let cacheKey = "dailyrep.snapshot." + code
     do {
-      let (bytes, response) = try await URLSession.shared.data(for: request)
-      let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-      if status == 401 || status == 404 {
-        UserDefaults.standard.removeObject(forKey: cacheKey)
-        return DailyRepEntry(date: .now, data: nil, message: "连接已失效\n请在App重新生成连接码", stale: false)
+      guard let bytes = try WidgetSnapshotStore.read() else {
+        return DailyRepEntry(date:.now,data:nil,message:"打开dailyRep并登录\n计划会自动同步到这里",stale:false)
       }
-      guard status == 200 else {throw URLError(.badServerResponse)}
-      let data = try JSONDecoder().decode(ProgressData.self, from: bytes)
-      UserDefaults.standard.set(bytes, forKey: cacheKey)
-      return DailyRepEntry(date: .now, data: data, message: nil, stale: false)
+      let data = try JSONDecoder().decode(ProgressData.self,from:bytes)
+      return DailyRepEntry(date:.now,data:data,message:nil,stale:false)
     } catch {
-      let cached = UserDefaults.standard.data(forKey: cacheKey).flatMap {try? JSONDecoder().decode(ProgressData.self, from: $0)}
-      return DailyRepEntry(date: .now, data: cached, message: cached == nil ? "暂时无法连接\n点按打开App" : nil, stale: true)
+      return DailyRepEntry(date:.now,data:nil,message:"请打开dailyRep同步计划\n"+error.localizedDescription,stale:false)
     }
   }
 }
@@ -71,42 +63,73 @@ struct DailyRepWidgetView: View {
   @Environment(\.widgetFamily) private var family
   private let gold = Color(red: 0.776, green: 0.655, blue: 0.369)
   private let beige = Color(red: 0.910, green: 0.863, blue: 0.784)
-  private var link: URL? {
-    guard let data = entry.data else {return URL(string:"dailyrep://plans")}
+  private var capacity: Int { family == .systemLarge ? 4 : family == .systemMedium ? 2 : 1 }
+  private var plansLink: URL { URL(string:"dailyrep://plans")! }
+  private func checkinLink(_ plan: PlanData) -> URL {
+    guard plan.status == "active" && !plan.progress.ended else { return plansLink }
     var url = URLComponents(string:"dailyrep://checkin")!
-    url.queryItems = [URLQueryItem(name:"sport",value:data.sport),URLQueryItem(name:"planId",value:data.planId)]
-    return url.url
+    url.queryItems = [URLQueryItem(name:"sport",value:plan.sport),URLQueryItem(name:"planId",value:plan.planId)]
+    return url.url ?? plansLink
+  }
+  private func status(_ plan: PlanData) -> String {
+    let formatter=DateFormatter();formatter.locale=Locale(identifier:"en_US_POSIX");formatter.dateFormat="yyyy-MM-dd"
+    formatter.timeZone=TimeZone(identifier:plan.timeZone ?? "Asia/Shanghai")
+    if let day=plan.progress.today,day != formatter.string(from:entry.date),plan.status == "active" {return "打开App更新今日进度"}
+    return plan.status == "paused" ? "已暂停" : plan.status == "finished" ? "已结束" : plan.progress.ended ? "阶段到站" : plan.progress.doneToday ? "今天已完成 ✓" : plan.progress.dueToday ? "今天待打卡" : "今天休息"
+  }
+  private func action(_ plan: PlanData) -> String {
+    plan.status == "paused" || plan.status == "finished" ? "查看" : plan.progress.ended ? "续期" : plan.progress.doneToday ? "再打卡" : "打卡"
   }
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      if let data = entry.data {
-        Text(data.title).font(.system(size: 13, weight: .medium)).lineLimit(1).foregroundStyle(beige)
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-          Text("\(data.progress.completedDays)").font(.system(size: family == .systemSmall ? 36 : 48, weight: .bold, design: .rounded)).foregroundStyle(gold)
-          Text("天 · 累计训练").font(.caption).foregroundStyle(beige)
-        }
-        ProgressView(value: Double(data.progress.elapsedDays), total: Double(max(1,data.progress.goalDays))).tint(gold)
-        Text("计划第 \(data.progress.elapsedDays) / \(data.progress.goalDays) 天").font(.caption2).foregroundStyle(beige)
-        Text(data.status == "finished" ? "计划已结束 · 记录一直都在" : data.status == "paused" ? "已暂停，休息也有节奏" : data.progress.ended ? "阶段到站 · 点按继续下一程" : data.progress.doneToday ? "今天已打卡 ✓" : data.progress.dueToday ? "今天留一点时间给自己 →" : "今天休息，为下一次蓄力")
-          .font(.system(size: family == .systemSmall ? 10 : 11,weight:.medium)).foregroundStyle(gold).lineLimit(2)
-        if entry.stale {Text("离线 · 显示上次进度").font(.system(size:9)).foregroundStyle(beige.opacity(0.65))}
-      } else {
-        Text("dailyRep").font(.headline).foregroundStyle(gold)
-        Text(entry.message ?? "每天进步一点点").font(.caption).foregroundStyle(beige).lineLimit(4)
+    VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 6) {
+      HStack {
+        Text("dailyRep").font(.system(size:14,weight:.bold)).foregroundStyle(gold)
+        Spacer()
+        if let data = entry.data { Text("\(data.plans.count) 项计划").font(.caption2).foregroundStyle(beige.opacity(0.8)) }
       }
+      if let data = entry.data, !data.plans.isEmpty {
+        ForEach(Array(data.plans.prefix(capacity))) { plan in
+          HStack(spacing: 10) {
+            VStack(alignment:.leading,spacing:3) {
+              Text(plan.title).font(.system(size:13,weight:.semibold)).lineLimit(1).foregroundStyle(beige)
+              Text("已训练\(plan.progress.completedDays)天 · \(status(plan))").font(.system(size:10)).lineLimit(1).foregroundStyle(gold)
+              if family == .systemLarge {
+                ProgressView(value:Double(plan.progress.elapsedDays),total:Double(max(1,plan.progress.goalDays))).tint(gold)
+                Text("计划第\(plan.progress.elapsedDays)/\(plan.progress.goalDays)天").font(.system(size:9)).foregroundStyle(beige.opacity(0.7))
+              }
+            }
+            .frame(maxWidth:.infinity,alignment:.leading)
+            if family != .systemSmall {
+              Link(destination:checkinLink(plan)) {
+                Text(action(plan)).font(.system(size:12,weight:.bold)).foregroundStyle(Color(red:0.08,green:0.13,blue:0.22))
+                  .frame(minWidth:48,minHeight:40).background(gold,in:RoundedRectangle(cornerRadius:10))
+              }.buttonStyle(.plain).accessibilityLabel("\(plan.title)，\(action(plan))")
+            }
+          }
+          .frame(maxHeight:.infinity)
+        }
+        if data.plans.count > capacity {
+          Link("还有\(data.plans.count-capacity)项 · 查看全部",destination:plansLink).font(.system(size:10)).foregroundStyle(beige)
+        }
+      } else {
+        Spacer(minLength:0)
+        Text(entry.data == nil ? (entry.message ?? "每天进步一点点") : "还没有计划\n点按设置一个长期目标").font(.caption).foregroundStyle(beige).lineLimit(4)
+        Spacer(minLength:0)
+      }
+      if entry.stale { Text("离线 · 显示上次进度").font(.system(size:9)).foregroundStyle(beige.opacity(0.65)) }
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    .containerBackground(for: .widget) {
+    .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.leading)
+    .containerBackground(for:.widget) {
       LinearGradient(colors:[Color(red:0.08,green:0.13,blue:0.22),Color(red:0.17,green:0.24,blue:0.34)],startPoint:.topLeading,endPoint:.bottomTrailing)
     }
-    .widgetURL(link)
+    .widgetURL(family == .systemSmall ? (entry.data?.plans.first.map(checkinLink) ?? plansLink) : plansLink)
   }
 }
 @main struct DailyRepWidget: Widget {
   var body: some WidgetConfiguration {
     AppIntentConfiguration(kind:"DailyRepProgress",intent:DailyRepConfiguration.self,provider:Provider()) {entry in DailyRepWidgetView(entry:entry)}
       .configurationDisplayName("健身坚持")
-      .description("看见长期计划的进度，把今天的一点努力坚持下去。")
-      .supportedFamilies([.systemSmall,.systemMedium])
+      .description("计划提醒列表：大号展示四项计划，点右侧打卡打开对应训练。")
+      .supportedFamilies([.systemSmall,.systemMedium,.systemLarge])
   }
 }
