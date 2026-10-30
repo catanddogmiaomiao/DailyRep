@@ -1,6 +1,15 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
 
+// Keep the original intent type and parameter identity so iOS can deserialize
+// already-installed widgets. The legacy value is intentionally never read.
+struct DailyRepConfiguration: WidgetConfigurationIntent {
+  static var title: LocalizedStringResource = "健身坚持"
+  static var description = IntentDescription("自动同步本机全部计划，无需配置。")
+  @Parameter(title:"旧版兼容参数（无需填写）") var connectionCode: String?
+  static var parameterSummary: some ParameterSummary { Summary("自动同步全部计划") }
+}
 struct PlanData: Decodable, Identifiable {
   var id: String { planId }
   let planId: String
@@ -51,6 +60,19 @@ struct Provider: TimelineProvider {
     } catch {
       WidgetSnapshotStore.recordRead(state:"error",count:0)
       return DailyRepEntry(date:.now,data:nil,message:"请打开dailyRep同步计划\n"+error.localizedDescription,stale:false)
+    }
+  }
+}
+struct LegacyProvider: AppIntentTimelineProvider {
+  func placeholder(in context:Context) -> DailyRepEntry {Provider().placeholder(in:context)}
+  func snapshot(for configuration:DailyRepConfiguration,in context:Context) async -> DailyRepEntry {
+    await withCheckedContinuation { continuation in
+      Provider().getSnapshot(in:context) {continuation.resume(returning:$0)}
+    }
+  }
+  func timeline(for configuration:DailyRepConfiguration,in context:Context) async -> Timeline<DailyRepEntry> {
+    await withCheckedContinuation { continuation in
+      Provider().getTimeline(in:context) {continuation.resume(returning:$0)}
     }
   }
 }
@@ -129,11 +151,28 @@ struct DailyRepWidgetView: View {
     .widgetURL(family == .systemSmall ? (entry.data?.plans.first.map(checkinLink) ?? plansLink) : plansLink)
   }
 }
-@main struct DailyRepWidget: Widget {
+struct DailyRepPlansWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind:"DailyRepPlansV3",provider:Provider()) {entry in DailyRepWidgetView(entry:entry)}
       .configurationDisplayName("健身计划列表")
       .description("计划提醒列表：大号展示四项计划，点右侧打卡打开对应训练。")
       .supportedFamilies([.systemSmall,.systemMedium,.systemLarge])
+  }
+}
+
+// WidgetKit persists existing placements by kind, including cached gallery entries.
+// Keep the original kind registered and serve the same automatic local plan list.
+struct DailyRepLegacyWidget: Widget {
+  var body: some WidgetConfiguration {
+    AppIntentConfiguration(kind:"DailyRepProgress",intent:DailyRepConfiguration.self,provider:LegacyProvider()) {entry in DailyRepWidgetView(entry:entry)}
+      .configurationDisplayName("健身坚持（兼容）")
+      .description("自动显示当前计划，兼容已有桌面组件，无需连接码。")
+      .supportedFamilies([.systemSmall,.systemMedium,.systemLarge])
+  }
+}
+@main struct DailyRepWidget: WidgetBundle {
+  var body: some Widget {
+    DailyRepPlansWidget()
+    DailyRepLegacyWidget()
   }
 }

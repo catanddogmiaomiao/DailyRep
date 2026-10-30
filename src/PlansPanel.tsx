@@ -54,7 +54,7 @@ export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onClose,onCh
           {widgetInfo&&<View style={p.card}>
             {widgetInfo.unavailable?<Text style={p.text}>当前安装包未包含小组件诊断，请重新Run安装新版。</Text>:widgetInfo.error?<Text style={p.error}>{widgetInfo.error}</Text>:<>
               <Text style={p.text}>App已保存 {widgetInfo.appPlanCount} 项计划供小组件读取。</Text>
-              <Text style={p.muted}>{widgetInfo.currentWidgetInstalled?'已检测到新版“健身计划列表”。':widgetInfo.legacyWidgetInstalled?'桌面仍是旧版组件，请移除后添加“健身计划列表”。':'尚未检测到新版小组件，请在主屏幕添加“健身计划列表”。'}</Text>
+              <Text style={p.muted}>{widgetInfo.modernWidgetInstalled?'已检测到新版“健身计划列表”。':widgetInfo.legacyWidgetInstalled?'已检测到兼容组件，会自动读取当前计划，无需删除重建。':'尚未检测到新版小组件，请在主屏幕添加“健身计划列表”。'}</Text>
               <Text style={p.muted}>{widgetInfo.widgetRead?`组件最近读取：${widgetInfo.widgetRead.state==='loaded'?widgetInfo.widgetRead.count+'项计划':widgetInfo.widgetRead.state==='empty'?'暂无同步数据':'读取失败'} · ${new Date(widgetInfo.widgetRead.readAt).toLocaleTimeString('zh-CN')}`:'组件尚未回报读取结果。添加后可再次检查。'}</Text>
             </>}
           </View>}

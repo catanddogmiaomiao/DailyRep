@@ -154,3 +154,19 @@ Read the actual signed Xcode products: both app and widget have the same expande
 macOS SwiftUI ImageRenderer exposed unsupported native-control rendering in the old view, including the progress control and the default-style overflow Link. Replaced the progress control with pure shapes, explicitly made the overflow Link plain, and bounded row heights. A regression first passed the large fixture but failed on the old default-style overflow Link at medium size; after the plain style change all seven rendered cases passed (small/medium/large, empty/unavailable, fullColor/accented/vibrant). Pixel checks require visible foreground and reject the unsupported-control red indicator. These are offscreen macOS layout checks, not iPhone WidgetKit-host acceptance.
 
 Added a new widget kind/name to avoid legacy intent cache reuse; moved snapshot reads off WidgetKit's callback queue. The widget records count/state/read-time only in a separate shared-Keychain health item. App diagnostics show its saved plan count, current/legacy installed-widget kinds and the widget's last reported read result. No credentials, plan titles or record details are included in diagnostic telemetry.
+
+WidgetCenter diagnostics compile correction: the installed SDK exposes getCurrentConfigurations only with its completion callback. Replaced the invalid zero-argument await with withCheckedThrowingContinuation around that callback. Replayed the actual full DailyRepNative Swift compiler invocation from the prior Xcode build, compiling the current module with real ExpoModulesCore dependencies: exit0, no compiler diagnostics. Added a macOS regression that compiles the actual WidgetCenter call against the iPhoneOS SDK, preserving the app's iOS15.1 minimum.
+
+## Widget kind migration compatibility (2026-10-30)
+
+User-reported device diagnostics: app saved2 plans, WidgetCenter reported only the legacy DailyRepProgress placement, and the widget had never recorded a read. The prior release registered only DailyRepPlansV3. This mismatched persisted kind is now handled by registering both kinds in a WidgetBundle, using the same automatic local Provider/View for each. Native diagnostics classify both as supported, and the UI no longer tells users to repeatedly delete a legacy placement. A regression locks down both public widget identifiers and supported-kind classification.
+
+Current widget bundle compiled to arm64 iOS17 object. The complete DailyRepNative module compiled with the real Xcode compiler flags, exit0. Seven offscreen rendering cases passed. Device crash-report listing over an existing paired connection found no dailyRep-named crash reports; that absence alone is not proof of a successful extension launch. Physical-device refresh/display still needs confirmation after installation.
+
+## Persisted AppIntent compatibility (2026-10-30)
+
+The device reported intentNotFound for DailyRepConfiguration (14DailyRepWidget0aB13ConfigurationV). Retaining the legacy widget kind alone was insufficient: the persisted placement also requires its original concrete WidgetConfigurationIntent. Restored that type and optional connectionCode parameter identity in module DailyRepWidget. DailyRepProgress uses AppIntentConfiguration with a legacy adapter that ignores the code and delegates to the automatic local snapshot provider; DailyRepPlansV3 remains a parameter-free StaticConfiguration. No connection code is requested or used.
+
+All 29 tests and all seven offscreen layout cases passed; current Widget Swift compiled to an arm64 iOS17 object. Device-host acceptance remains pending installation; these checks do not establish physical-device rendering.
+
+The installed Xcode AppIntents metadata processor also completed successfully against the newly compiled widget and emitted Metadata.appintents; the restored concrete intent is included in extracted metadata. TypeScript check passed. Generated local Xcode widget sources were refreshed.

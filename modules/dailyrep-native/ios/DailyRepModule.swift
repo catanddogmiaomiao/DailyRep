@@ -103,8 +103,13 @@ public class DailyRepModule: Module {
     }
     AsyncFunction("widgetDiagnostics") { () async throws -> [String:Any] in
       var result=try WidgetSnapshotStore.diagnostics()
-      let widgets=try await WidgetCenter.shared.getCurrentConfigurations()
-      result["currentWidgetInstalled"]=widgets.contains{$0.kind == "DailyRepPlansV3"}
+      let widgets:[WidgetInfo] = try await withCheckedThrowingContinuation { continuation in
+        WidgetCenter.shared.getCurrentConfigurations { result in
+          continuation.resume(with:result)
+        }
+      }
+      result["currentWidgetInstalled"]=widgets.contains{$0.kind == "DailyRepPlansV3" || $0.kind == "DailyRepProgress"}
+      result["modernWidgetInstalled"]=widgets.contains{$0.kind == "DailyRepPlansV3"}
       result["legacyWidgetInstalled"]=widgets.contains{$0.kind == "DailyRepProgress"}
       return result
     }
