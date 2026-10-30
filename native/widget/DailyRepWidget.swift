@@ -102,7 +102,7 @@ struct DailyRepWidgetView: View {
     plan.status == "paused" || plan.status == "finished" ? "查看" : plan.progress.ended ? "续期" : plan.progress.doneToday ? "再打卡" : "打卡"
   }
   var body: some View {
-    VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 6) {
+    VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 4) {
       HStack {
         Text("dailyRep").font(.system(size:14,weight:.bold)).foregroundStyle(accentColor)
         Spacer()
@@ -111,18 +111,20 @@ struct DailyRepWidgetView: View {
       if let data = entry.data, !data.plans.isEmpty {
         ForEach(Array(data.plans.prefix(capacity))) { plan in
           HStack(spacing: 10) {
-            VStack(alignment:.leading,spacing:3) {
-              Text(plan.title).font(.system(size:13,weight:.semibold)).lineLimit(1).foregroundStyle(textColor)
-              Text("已训练\(plan.progress.completedDays)天 · \(status(plan))").font(.system(size:10)).lineLimit(1).foregroundStyle(accentColor)
-              if family == .systemLarge {
+            VStack(alignment:.leading,spacing:2) {
+              Text(plan.title).font(.system(size:family == .systemMedium ? 12 : 13,weight:.semibold)).lineLimit(1).foregroundStyle(textColor)
+              HStack(spacing:6) {
+                Text(plan.progress.elapsedDays == 0 ? "尚未开始 · 共\(plan.progress.goalDays)天" : "第\(plan.progress.elapsedDays)天 / 共\(plan.progress.goalDays)天")
+                  .font(.system(size:10,weight:.semibold)).lineLimit(1).fixedSize(horizontal:true,vertical:false).foregroundStyle(accentColor)
                 GeometryReader { geometry in
                   ZStack(alignment:.leading) {
                     Capsule().fill(textColor.opacity(0.15))
                     Capsule().fill(accentColor).frame(width:geometry.size.width * min(1,max(0,Double(plan.progress.elapsedDays)/Double(max(1,plan.progress.goalDays)))))
                   }
-                }.frame(height:4)
-                Text("计划第\(plan.progress.elapsedDays)/\(plan.progress.goalDays)天").font(.system(size:9)).foregroundStyle(textColor.opacity(0.7))
+                }.frame(height:3)
+                .accessibilityHidden(true)
               }
+              Text("已训练\(plan.progress.completedDays)天 · \(status(plan))").font(.system(size:9)).lineLimit(1).foregroundStyle(textColor.opacity(0.8))
             }
             .frame(maxWidth:.infinity,alignment:.leading)
             if family != .systemSmall {

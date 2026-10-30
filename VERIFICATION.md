@@ -170,3 +170,9 @@ The device reported intentNotFound for DailyRepConfiguration (14DailyRepWidget0a
 All 29 tests and all seven offscreen layout cases passed; current Widget Swift compiled to an arm64 iOS17 object. Device-host acceptance remains pending installation; these checks do not establish physical-device rendering.
 
 The installed Xcode AppIntents metadata processor also completed successfully against the newly compiled widget and emitted Metadata.appintents; the restored concrete intent is included in extracted metadata. TypeScript check passed. Generated local Xcode widget sources were refreshed.
+
+## Multi-plan widget day progress (2026-10-30)
+
+Each visible plan row now shows its elapsed plan day and goal days, with a compact progress bar, on small, medium and large widgets. A separate line retains trained-day count and today's completion/rest status. This distinguishes calendar plan progress from completed training days. Future plans say not started. The original widget identifiers, intent compatibility and local snapshot provider remain unchanged. Medium layout uses tighter spacing to retain two plan rows and the overflow link.
+
+Validation: arm64 iOS17 widget compilation passed without diagnostics; all seven offscreen rendering cases passed, and small/medium/large previews were visually reviewed. Local Xcode sources have been regenerated. Physical-device appearance requires installing this build.
