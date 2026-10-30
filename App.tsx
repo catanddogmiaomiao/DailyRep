@@ -202,6 +202,8 @@ function App() {
           setToken(saved);
           setEmail(me.email);
           await refresh(saved);
+        } else {
+          await clearWidgetSnapshot().catch(()=>undefined);
         }
       } catch (e: any) {
         if (e.status === 401) await clear();

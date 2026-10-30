@@ -30,6 +30,9 @@ export async function restoreCachedReminders() {
     const cache=new File(Paths.document,'training-reminders.json');if(!cache.exists)return null;
     const saved=JSON.parse(await cache.text());
     if(!Array.isArray(saved.plans)||!Array.isArray(saved.records))return null;
+    // Called only when SecureStore still contains this app's signed-in session.
+    // Warm the widget from the last local plans even if the API is temporarily offline.
+    await syncWidgetSnapshot(saved.plans,saved.records).catch(()=>undefined);
     return await syncReminders(saved.plans,saved.records);
   }catch{return null;}
 }
