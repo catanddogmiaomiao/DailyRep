@@ -140,11 +140,11 @@ enum CheckinSound {
     let duration:Double
     let decay:Double
     switch kind {
-    case "tap": hits=[(0,360,0.22)];duration=0.07;decay=65
-    case "selection": hits=[(0,450,0.16)];duration=0.055;decay=80
-    case "confirm": hits=[(0,220,0.3),(0.09,330,0.32)];duration=0.24;decay=35
-    case "delete": hits=[(0,130,0.34)];duration=0.14;decay=35
-    case "error": hits=[(0,200,0.3),(0.11,150,0.3)];duration=0.30;decay=35
+    case "tap": hits=[(0,330,0.42)];duration=0.085;decay=45
+    case "selection": hits=[(0,490,0.34)];duration=0.065;decay=60
+    case "confirm": hits=[(0,246,0.48),(0.09,370,0.52)];duration=0.24;decay=30
+    case "delete": hits=[(0,150,0.52)];duration=0.14;decay=30
+    case "error": hits=[(0,220,0.48),(0.11,165,0.48)];duration=0.30;decay=30
     default: hits=[(0,146,0.65),(0.18,116,0.78)];duration=0.54;decay=19
     }
     let count = Int(Double(rate) * duration)
@@ -182,10 +182,11 @@ private final class CheckinFeedback {
   private var player: AVAudioPlayer?
   private var sounds:[String:AVAudioPlayer] = [:]
   private var lastInteraction:TimeInterval = -1
-  private let selection = UISelectionFeedbackGenerator()
+  private let selection = UIImpactFeedbackGenerator(style:.rigid)
+  private let tap = UIImpactFeedbackGenerator(style:.medium)
   private let notification = UINotificationFeedbackGenerator()
-  private let first = UIImpactFeedbackGenerator(style:.medium)
-  private let second = UIImpactFeedbackGenerator(style:.soft)
+  private let first = UIImpactFeedbackGenerator(style:.heavy)
+  private let second = UIImpactFeedbackGenerator(style:.rigid)
   private var lastPlayed: TimeInterval = -1
   private var pending: DispatchWorkItem?
   func play() {
@@ -195,11 +196,11 @@ private final class CheckinFeedback {
     lastPlayed = now
     pending?.cancel()
     first.prepare();second.prepare()
-    sound("success",volume:0.7)
-    first.impactOccurred(intensity:0.6)
+    sound("success",volume:0.95)
+    first.impactOccurred(intensity:0.9)
     let followup = DispatchWorkItem { [weak self] in
       guard UIApplication.shared.applicationState == .active else {return}
-      self?.second.impactOccurred(intensity:0.85)
+      self?.second.impactOccurred(intensity:1.0)
     }
     pending = followup
     DispatchQueue.main.asyncAfter(deadline:.now()+0.18,execute:followup)
@@ -213,13 +214,13 @@ private final class CheckinFeedback {
     if ["tap","selection"].contains(kind),now - lastInteraction <= 0.085 {return}
     lastInteraction = now
     switch kind {
-    case "selection": selection.selectionChanged()
+    case "selection": selection.prepare();selection.impactOccurred(intensity:0.65)
     case "confirm": notification.notificationOccurred(.success)
     case "error": notification.notificationOccurred(.error)
-    case "delete": second.impactOccurred(intensity:0.5)
-    default: second.impactOccurred(intensity:0.35)
+    case "delete": first.prepare();first.impactOccurred(intensity:0.75)
+    default: tap.prepare();tap.impactOccurred(intensity:0.8)
     }
-    sound(kind,volume:kind == "selection" ? 0.32 : 0.45)
+    sound(kind,volume:kind == "selection" ? 0.75 : 0.9)
   }
   private func sound(_ kind:String,volume:Float) {
     do {
