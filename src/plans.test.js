@@ -61,3 +61,19 @@ test('record linkage checks sport and date while allowing explicit extra trainin
  assert.throws(()=>validatePlanLink(p,record('2026-10-28',{sport:'running'})));
  assert.throws(()=>validatePlanLink(p,record('2026-01-01')));
 });
+
+test('checking in on day one retains subsequent reminders for every active plan',()=>{
+ const plans=['running','swimming','pushups','abs'].map((sport,i)=>({...create(),id:'p'+i,sport}));
+ const records=plans.map(p=>record('2026-10-28',{planId:p.id,sport:p.sport}));
+ const queue=reminderQueue(plans,records,now);
+ assert.equal(queue.length,60);
+ for(const p of plans) {
+  const items=queue.filter(r=>r.planId===p.id);
+  assert.ok(items.length>1);
+  assert.equal(items[0].at,'2026-10-29T11:00:00.000Z');
+  assert.equal(items[1].at,'2026-10-30T11:00:00.000Z');
+ }
+ const later=reminderQueue(plans,records,new Date('2026-10-30T12:00:00Z'));
+ assert.equal(later.length,60);
+ assert.ok(later.every(r=>r.at>='2026-10-31T11:00:00.000Z'));
+});

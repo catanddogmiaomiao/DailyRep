@@ -57,28 +57,47 @@ public class DailyRepModule: Module {
         throw NSError(domain: "DailyRep", code: 1, userInfo: [NSLocalizedDescriptionKey: "提醒数据无效"])
       }
       let center = UNUserNotificationCenter.current()
-      let pending = await center.pendingNotificationRequests()
-      center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("dailyrep.") }.map(\.identifier))
       let permission = await self.status()
       guard permission == "authorized" || permission == "provisional" else { return ["status": permission, "scheduled": 0] }
       let formatter = ISO8601DateFormatter()
       formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-      var count = 0
-      var last = ""
+      // Validate the entire replacement before touching any existing system requests.
+      var requests:[UNNotificationRequest] = []
+      var dates:[String:String] = [:]
       for row in rows {
-        guard let id = row["id"], id.hasPrefix("dailyrep."), let at = row["at"], let date = formatter.date(from: at), date.timeIntervalSinceNow > 0 else { continue }
+        guard let id = row["id"], id.hasPrefix("dailyrep."), let at = row["at"], let date = formatter.date(from:at) else {
+          throw NSError(domain:"DailyRep",code:2,userInfo:[NSLocalizedDescriptionKey:"提醒时间无效，已保留原有提醒"])
+        }
+        guard date.timeIntervalSinceNow > 0 else {continue}
         let content = UNMutableNotificationContent()
         content.title = row["title"] ?? "今天也给自己一点时间"
         content.body = row["body"] ?? "完成训练后记得打卡。"
         content.sound = .default
-        content.userInfo = ["sport": row["sport"] ?? "", "planId": row["planId"] ?? ""]
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, date.timeIntervalSinceNow), repeats: false)
-        try await center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
-        count += 1
-        last = at
+        content.userInfo = ["sport":row["sport"] ?? "", "planId":row["planId"] ?? ""]
+        var calendar = Calendar(identifier:.gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT:0)!
+        var components = calendar.dateComponents([.year,.month,.day,.hour,.minute,.second],from:date)
+        components.calendar = calendar
+        components.timeZone = calendar.timeZone
+        let trigger = UNCalendarNotificationTrigger(dateMatching:components,repeats:false)
+        requests.append(UNNotificationRequest(identifier:id,content:content,trigger:trigger))
+        dates[id] = at
       }
-      return ["status": permission, "scheduled": count, "through": last]
+      // IDs include plan and date. Adding replaces that one request; unrelated future
+      // reminders survive interruptions/failures while this queue is being refreshed.
+      for request in requests {try await center.add(request)}
+      let wanted = Set(requests.map(\.identifier))
+      let pending = await center.pendingNotificationRequests()
+      let obsolete = pending.filter{$0.identifier.hasPrefix("dailyrep.") && !wanted.contains($0.identifier)}.map(\.identifier)
+      center.removePendingNotificationRequests(withIdentifiers:obsolete)
+      let actual = await center.pendingNotificationRequests().filter{wanted.contains($0.identifier)}
+      guard actual.count == wanted.count else {
+        throw NSError(domain:"DailyRep",code:3,userInfo:[NSLocalizedDescriptionKey:"系统未保存全部提醒，请打开计划重新同步"])
+      }
+      let through = actual.compactMap{dates[$0.identifier]}.max() ?? ""
+      return ["status":permission,"scheduled":actual.count,"through":through]
     }
+
     AsyncFunction("cancelReminders") { () async in
       let center = UNUserNotificationCenter.current()
       let pending = await center.pendingNotificationRequests()
