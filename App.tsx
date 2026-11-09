@@ -1,3 +1,4 @@
+import {AccountScreen,AccountReset} from "./src/AccountScreen";
 import {FeedbackPressable as Pressable} from "./src/FeedbackPressable";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -84,7 +85,7 @@ function App() {
   const photoInsets = useSafeAreaInsets();
   const [token, setToken] = useState<string | null>(null),
     [initializing, setInitializing] = useState(true),
-    [email, setEmail] = useState(""),
+    [accountVisible,setAccountVisible] = useState(false),
     [records, setRecords] = useState<RecordItem[]>([]),
     [plans,setPlans] = useState<any[]>([]),
     [plansVisible,setPlansVisible] = useState(false),
@@ -131,6 +132,7 @@ function App() {
       signal: controller.signal,
       headers: {
         ...options.headers,
+        "X-DailyRep-Client": "ios",
         ...(auth ? { Authorization: "Bearer " + auth } : {}),
       },
     }); } catch { throw new Error("暂时无法连接服务，请检查网络后重试"); }
@@ -149,7 +151,7 @@ function App() {
     await SecureStore.deleteItemAsync("dailyrep_token");
     setToken(null);
     setRecords([]);
-    setPlans([]);setDataReady(false);setPlansVisible(false);
+    setPlans([]);setDataReady(false);setPlansVisible(false);setAccountVisible(false);setForm(false);setPage("home");setError("");
     await Promise.all([clearDeviceReminders(),clearWidgetSnapshot()]);
     setPhoto(null);
   }
@@ -160,8 +162,7 @@ function App() {
       const [rows, planRows] = await Promise.all([api("/records", {}, auth),api("/plans",{},auth)]);
       if (version === generation.current) {setRecords(rows);setPlans(planRows);setDataReady(true);}
     } catch (e: any) {
-      if (e.status === 401) await clear();
-      else setError(e.message);
+      if (version === generation.current) { if(e.status===401)await clear(); else setError(e.message); }
       if(propagate)throw e;
     } finally {
       setLoading(false);
@@ -199,9 +200,8 @@ function App() {
         const saved = await SecureStore.getItemAsync("dailyrep_token");
         if (saved) {
           await restoreCachedReminders();
-          const me = await api("/me", {}, saved);
+          await api("/me", {}, saved);
           setToken(saved);
-          setEmail(me.email);
           await refresh(saved);
         } else {
           await clearWidgetSnapshot().catch(()=>undefined);
@@ -231,6 +231,7 @@ function App() {
     return (
       <Login
         error={error}
+        api={(route,options)=>api(route,options,null)}
         onLogin={async (mail, password, registration) => {
           const data = await api(
             registration ? "/register" : "/login",
@@ -243,7 +244,6 @@ function App() {
           );
           await SecureStore.setItemAsync("dailyrep_token", data.token);
           setToken(data.token);
-          setEmail(data.email);
           setError("");
           await refresh(data.token);
         }}
@@ -297,28 +297,13 @@ function App() {
               </View>
             )}
             <Pressable
-              accessibilityLabel="退出登录"
-              onPress={() =>
-                Alert.alert("退出登录", email, [
-                  { text: "取消", style: "cancel" },
-                  {
-                    text: "退出",
-                    onPress: async () => {
-                      try {
-                        await api("/logout", { method: "POST" });
-                        await clear();
-                      } catch (e: any) {
-                        setError(e.message);
-                      }
-                    },
-                  },
-                ])
-              }
+              accessibilityLabel="账号管理"
+              onPress={() => setAccountVisible(true)}
               accessibilityRole="button"
               hitSlop={8}
               style={s.iconBtn}
             >
-              <Ionicons name="log-out-outline" size={22} color="#e8dcc8" />
+              <Ionicons name="person-circle-outline" size={22} color="#e8dcc8" />
             </Pressable>
           </View>
           <Text style={s.eyebrow}>MAKE EVERY DAY COUNT</Text>
@@ -581,6 +566,7 @@ function App() {
           }}
         />
       )}
+      {accountVisible&&<AccountScreen api={api} onClose={()=>setAccountVisible(false)} onSignedOut={clear}/>}
       <PlansPanel visible={plansVisible} plans={plans} api={api} onChanged={async()=>{await refresh(token,true);}} onPlanSaved={saved=>setPlans(previous=>[{...saved,progress:planProgress(saved,records)},...previous.filter(p=>p.id!==saved.id)])} onClose={()=>setPlansVisible(false)} coverage={coverage} onCheckin={(sport,planId)=>{setPlansVisible(false);go(sport as Sport);setInitialPlanId(planId);setForm(true);}}/>
       <Modal
         visible={!!photo}
@@ -617,9 +603,11 @@ function App() {
   );
 }
 function Login({
+  api,
   onLogin,
   error,
 }: {
+  api: (route:string,options?:RequestInit)=>Promise<any>;
   onLogin: (email: string, password: string, registration?: {setupCode: string}) => Promise<void>;
   error: string;
 }) {
@@ -630,17 +618,19 @@ function Login({
     [register, setRegister] = useState(false),
     [confirmPassword, setConfirmPassword] = useState(""),
     [setupCode, setSetupCode] = useState(""),
-    [registrationAvailable, setRegistrationAvailable] = useState(false);
+    [registrationAvailable, setRegistrationAvailable] = useState(false),
+    [emailAvailable,setEmailAvailable]=useState(false),[reset,setReset]=useState(false),[resetDone,setResetDone]=useState(false);
   useEffect(() => {
     if (!API) return;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
     fetch(API + '/api/setup', {signal: controller.signal})
       .then(res => res.ok ? res.json() : null)
-      .then(data => setRegistrationAvailable(!!data?.registrationAvailable))
+      .then(data => {setRegistrationAvailable(!!data?.registrationAvailable);setEmailAvailable(!!data?.emailAvailable);})
       .catch(() => {}).finally(() => clearTimeout(timer));
     return () => { clearTimeout(timer); controller.abort(); };
   }, []);
+  if(reset)return <AccountReset api={api} initialEmail={email} emailAvailable={emailAvailable} onBack={()=>setReset(false)} onDone={()=>{setReset(false);setResetDone(true);setPassword("");}}/>;
   return (
     <SafeAreaView style={s.container}>
       <StatusBar style="light" />
@@ -692,6 +682,7 @@ function Login({
               <Text style={s.fieldLabel}>首次注册邀请码</Text>
               <TextInput accessibilityLabel="首次注册邀请码" style={s.loginInput} value={setupCode} onChangeText={setSetupCode} secureTextEntry autoCapitalize="none" autoCorrect={false} placeholder="输入服务所有者的邀请码" placeholderTextColor="#7c899e" />
             </>}
+            {resetDone&&<Text style={s.muted}>密码已重设，请用新密码登录。</Text>}
             {err || error ? <Text style={s.error}>{err || error}</Text> : null}
             <Pressable
               disabled={busy}
@@ -729,6 +720,7 @@ function Login({
             {(registrationAvailable || register) && <Pressable disabled={busy} onPress={() => {setRegister(!register); setErr('');}} style={{padding: 16, alignItems: 'center'}}>
               <Text style={{color: '#c6a75e'}}>{register ? '已有账号？返回登录' : '首次使用？创建个人账号'}</Text>
             </Pressable>}
+            {!register&&<Pressable accessibilityRole="button" disabled={busy} onPress={()=>{setErr("");setResetDone(false);setReset(true);}} style={{minHeight:44,justifyContent:"center",alignItems:"center"}}><Text style={{color:"#c6a75e"}}>忘记密码？</Text></Pressable>}
             <Text style={s.footer}>个人账号 · 数据私密保存</Text>
           </View>
         </ScrollView>
