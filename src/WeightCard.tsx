@@ -5,14 +5,14 @@ import {Ionicons} from "@expo/vector-icons";
 import Svg, {Circle, Line, Polyline, Text as SvgText} from "react-native-svg";
 import {FeedbackPressable as Pressable} from "./FeedbackPressable";
 
-type Entry = {day: string; kg: number};
+export type WeightEntry = {day: string; kg: number};
 type Api = (route: string, options?: RequestInit) => Promise<any>;
 
-function localDay(date = new Date()) {
+export function localWeightDay(date = new Date()) {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
 }
 
-function WeightTrend({entries}: {entries: Entry[]}) {
+function WeightTrend({entries}: {entries: WeightEntry[]}) {
   const ordered = [...entries].reverse();
   const weights = ordered.map(entry => entry.kg);
   const min = Math.min(...weights);
@@ -45,9 +45,13 @@ function WeightTrend({entries}: {entries: Entry[]}) {
   </View>;
 }
 
-export function WeightScreen({api,onClose}: {api: Api;onClose:()=>void}) {
+export function WeightScreen({api,onClose,onTodayChange}: {
+  api: Api;
+  onClose: () => void;
+  onTodayChange: (entry: WeightEntry | null) => void;
+}) {
   const insets=useSafeAreaInsets();
-  const [entries, setEntries] = useState<Entry[] | null>(null);
+  const [entries, setEntries] = useState<WeightEntry[] | null>(null);
   const [input, setInput] = useState("");
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -59,8 +63,11 @@ export function WeightScreen({api,onClose}: {api: Api;onClose:()=>void}) {
   async function load() {
     setError("");
     try {
-      const data = await api("/account/weight");
-      if (active.current) setEntries(data);
+      const data: WeightEntry[] = await api("/account/weight");
+      if (active.current) {
+        setEntries(data);
+        onTodayChange(data.find(entry => entry.day === localWeightDay()) ?? null);
+      }
     } catch (e: any) {
       if (active.current) setError(e.status===404?"体重服务尚未更新，请稍后再试。":e.message);
     }
@@ -72,7 +79,7 @@ export function WeightScreen({api,onClose}: {api: Api;onClose:()=>void}) {
     return () => {active.current = false;};
   }, []);
 
-  const today = localDay();
+  const today = localWeightDay();
   const todayEntry = entries?.find(entry => entry.day === today);
 
   async function save() {
@@ -85,12 +92,13 @@ export function WeightScreen({api,onClose}: {api: Api;onClose:()=>void}) {
     setBusy(true);
     setError("");
     try {
-      const entry: Entry = await api("/account/weight", {
+      const entry: WeightEntry = await api("/account/weight", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({day: localDay(), kg}),
+        body: JSON.stringify({day: localWeightDay(), kg}),
       });
       if (!active.current) return;
+      onTodayChange(entry);
       setEntries(previous => [entry, ...(previous ?? []).filter(item => item.day !== entry.day)]
         .sort((a, b) => b.day.localeCompare(a.day)).slice(0, 90));
       setEditing(false);
@@ -102,11 +110,11 @@ export function WeightScreen({api,onClose}: {api: Api;onClose:()=>void}) {
     }
   }
 
-  return <Modal animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+  return <Modal animationType="slide" presentationStyle="fullScreen" onRequestClose={()=>{if(!busy)onClose();}}>
     <View style={[styles.screen,{paddingTop:insets.top,paddingBottom:insets.bottom,paddingLeft:insets.left,paddingRight:insets.right}]}>
       <View style={styles.header}>
         <Text accessibilityRole="header" style={styles.pageTitle}>体重记录</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="关闭体重记录" style={styles.close} onPress={onClose}>
+        <Pressable accessibilityRole="button" accessibilityLabel="关闭体重记录" style={styles.close} disabled={busy} onPress={onClose}>
           <Ionicons name="close" color="#e8dcc8" size={26}/>
         </Pressable>
       </View>

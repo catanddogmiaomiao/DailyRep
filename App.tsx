@@ -28,8 +28,8 @@ import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { File } from "expo-file-system";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
-import { report, movePeriod } from "./src/stats";
-import {WeightScreen} from "./src/WeightCard";
+import { report, movePeriod, weeklyOverview, formatTrainingDuration } from "./src/stats";
+import {WeightScreen,localWeightDay,type WeightEntry} from "./src/WeightCard";
 import {PlansPanel} from "./src/PlansPanel";
 import {dateInZone, isDue, matchesPlan, planProgress} from "./src/plans";
 import {syncReminders, restoreCachedReminders, clearDeviceReminders, syncWidgetSnapshot, clearWidgetSnapshot, listenToNotifications, lastNotification, playCheckinSuccess, playInteraction} from "./src/nativeReminders";
@@ -89,11 +89,14 @@ function App() {
   const homePager=useRef<ScrollView>(null);
   const homeDestination=useRef<0|1>(0);
   const profileRevision=useRef(0);
+  const weightRevision=useRef(0);
+  const [todayWeight,setTodayWeight]=useState<WeightEntry|null|"unavailable">();
   const [profile,setProfile]=useState<Profile|null>(null);
   const [token, setToken] = useState<string | null>(null),
     [initializing, setInitializing] = useState(true),
     [accountVisible,setAccountVisible] = useState(false),
     [weightVisible,setWeightVisible] = useState(false),
+    [weeklyVisible,setWeeklyVisible] = useState(false),
     [records, setRecords] = useState<RecordItem[]>([]),
     [plans,setPlans] = useState<any[]>([]),
     [homeScreen,setHomeScreen] = useState<0|1>(0),
@@ -146,6 +149,10 @@ function App() {
     profileRevision.current++;
     setProfile(next);
   }
+  function updateTodayWeight(entry: WeightEntry | null) {
+    weightRevision.current++;
+    setTodayWeight(entry);
+  }
   async function api(route: string, options: RequestInit = {}, auth = token) {
     if (!API) throw new Error("服务地址尚未配置，请更新到已连接服务的新版本");
     const controller = new AbortController();
@@ -176,8 +183,9 @@ function App() {
     setToken(null);
     setRecords([]);
     setProfile(null);
+    setTodayWeight(undefined);
     switchHomeScreen(0,false);
-    setPlans([]);setDataReady(false);setAccountVisible(false);setWeightVisible(false);setForm(false);setPage("home");setError("");
+    setPlans([]);setDataReady(false);setAccountVisible(false);setWeightVisible(false);setWeeklyVisible(false);setForm(false);setPage("home");setError("");
     await Promise.all([clearDeviceReminders(),clearWidgetSnapshot()]);
     setPhoto(null);
   }
@@ -188,6 +196,14 @@ function App() {
     void api("/me",{},auth).then(data=>{
       if(version===generation.current&&revision===profileRevision.current)setProfile(data);
     }).catch(()=>{});
+    const weightRequest=++weightRevision.current;
+    void api("/account/weight",{},auth).then((entries:WeightEntry[])=>{
+      if(version===generation.current&&weightRequest===weightRevision.current)
+        setTodayWeight(entries.find(entry=>entry.day===localWeightDay())??null);
+    }).catch(()=>{
+      if(version===generation.current&&weightRequest===weightRevision.current)
+        setTodayWeight(previous=>previous===undefined?"unavailable":previous);
+    });
     try {
       const [rows, planRows] = await Promise.all([api("/records", {}, auth),api("/plans",{},auth)]);
       if (version === generation.current) {setRecords(rows);setPlans(planRows);setDataReady(true);}
@@ -280,8 +296,11 @@ function App() {
         }}
       />
     );
+  const weightLabel = todayWeight===undefined ? "读取中…" : todayWeight==="unavailable" ? "暂无法读取" :
+    todayWeight?.day===localWeightDay() ? `今日 ${todayWeight.kg} kg` : "今日未记录";
   const selected = page === "home" ? null : sports[page],
     stat = page === "home" ? null : report(records.filter(r=>matchesPlan(r,planFilter)), page, period, anchor, subtype);
+  const weekly=page==="home"?weeklyOverview(records,Object.keys(sports)):null;
   const dashboard=(
       <ScrollView
         ref={scrollRef}
@@ -359,39 +378,34 @@ function App() {
             </Text>
           </Pressable>
         ) : null}
-        {!selected ? (
+        {weekly ? (
           <>
-            <View style={s.beige}>
-              <Text style={s.darkLabel}>本周打卡</Text>
+            <Pressable accessibilityRole="button" accessibilityHint="打开本周统计" style={[s.beige,s.weeklyCard]} onPress={()=>setWeeklyVisible(true)}>
               <View style={s.row}>
-                <Text style={s.darkBig}>
-                  {
-                    records.filter(
-                      (r) =>
-                        new Date(r.occurredAt) >=
-                        report([], "running", "week").start,
-                    ).length
-                  }
-                  <Text style={s.darkUnit}> 次</Text>
-                </Text>
-                <Ionicons name="water-outline" size={52} color="#b2965c" />
+                <View style={{flex:1,gap:5}}>
+                  <Text style={s.weeklyTitle}>本周打卡 {weekly.count} 次</Text>
+                  <Text style={s.darkLabel}>运动 {weekly.days} 天 · {formatTrainingDuration(weekly.duration)}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#1f2a44"/>
               </View>
-              <Text style={s.darkHint}>把今天的努力，留给未来的自己。</Text>
-            </View>
+            </Pressable>
             <Pressable accessibilityRole="button" style={[s.record,{marginTop:16,minHeight:56}]} onPress={()=>setWeightVisible(true)}>
-              <View style={s.row}>
+              <View style={[s.row,{flex:1}]}>
                 <View style={{flexDirection:"row",gap:10,alignItems:"center"}}>
                   <Ionicons name="trending-up-outline" size={22} color="#c6a75e"/>
                   <Text style={s.tabText}>体重记录</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#a9b4c6"/>
+                <View style={{flexDirection:"row",alignItems:"center",gap:6,flexShrink:1}}>
+                  <Text style={s.homeWeight}>{weightLabel}</Text>
+                  <Ionicons name="chevron-forward" size={18} color="#a9b4c6"/>
+                </View>
               </View>
             </Pressable>
             <Text style={s.sectionTitle}>选择今天的运动</Text>
             <View style={s.sportGrid}>
-              {(Object.keys(sports) as Sport[]).map((key) => {
-                const sport = sports[key],
-                  st = report(records, key, "week");
+              {weekly.reports.map(st => {
+                const key=st.sport as Sport;
+                const sport=sports[key];
                 return (
                   <Pressable
                     key={key}
@@ -422,7 +436,7 @@ function App() {
             <Text style={s.footer}>私人空间 · 记录只属于你</Text>
           </>
         ) : (
-          stat && (
+          selected && stat && (
             <>
               <Pressable style={s.gold} onPress={() => {setInitialPlanId("");setForm(true);}}>
                 <Ionicons name="add" size={21} color="#1f2a44" />
@@ -633,7 +647,44 @@ function App() {
           }}
         />
       )}
-      {weightVisible&&<WeightScreen api={api} onClose={()=>setWeightVisible(false)}/>}
+      {weeklyVisible&&weekly&&<Modal animationType="slide" presentationStyle="fullScreen" onRequestClose={()=>setWeeklyVisible(false)}>
+        <View style={[s.container,{
+          paddingTop:photoInsets.top,paddingBottom:photoInsets.bottom,
+          paddingLeft:photoInsets.left,paddingRight:photoInsets.right,
+        }]}>
+          <View style={[s.row,{paddingHorizontal:20}]}>
+            <Text accessibilityRole="header" style={s.weeklyHeading}>本周统计</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="关闭本周统计" style={s.iconBtn} onPress={()=>setWeeklyVisible(false)}>
+              <Ionicons name="close" size={26} color="#e8dcc8"/>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={s.weeklyContent}>
+            <Text style={s.muted}>{weekly.start.toLocaleDateString("zh-CN",{month:"long",day:"numeric"})} – {weekly.end.toLocaleDateString("zh-CN",{month:"long",day:"numeric"})}</Text>
+            <View style={[s.beige,s.weeklyCard]}>
+              <Text style={s.weeklyTitle}>{weekly.count} 次打卡</Text>
+              <Text style={s.darkLabel}>运动 {weekly.days} 天 · {formatTrainingDuration(weekly.duration)}</Text>
+            </View>
+            {weekly.reports.map(item=>{
+              const key=item.sport as Sport;
+              const sport=sports[key];
+              return <Pressable key={key} accessibilityRole="button" accessibilityHint="打开项目的本周报告" style={[s.record,s.weeklySport]} onPress={()=>{
+                setWeeklyVisible(false);go(key);
+              }}>
+                <View style={s.row}>
+                  <View style={{flexDirection:"row",alignItems:"center",gap:9}}>
+                    <Ionicons name={sport.icon} color="#c6a75e" size={22}/>
+                    <Text style={s.tabText}>{sport.name}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" color="#a9b4c6" size={18}/>
+                </View>
+                <Text style={s.muted}>{item.rows.length===0?"本周未打卡":
+                  `${item.rows.length} 次打卡 · ${item.legacyCount===item.rows.length?"":fmt(item.total)+" "+sport.unit+" · "}${formatTrainingDuration(item.duration)}`}</Text>
+              </Pressable>;
+            })}
+          </ScrollView>
+        </View>
+      </Modal>}
+      {weightVisible&&<WeightScreen api={api} onClose={()=>setWeightVisible(false)} onTodayChange={updateTodayWeight}/>}
       {accountVisible&&<AccountScreen api={api} onClose={()=>setAccountVisible(false)} onSignedOut={clear} onProfile={updateProfile}/>}
       <Modal
         visible={!!photo}
@@ -1444,6 +1495,12 @@ const s = StyleSheet.create({
     gap: 10,
     alignItems: "center",
   },
+  weeklyCard:{paddingHorizontal:16,paddingVertical:12,gap:5},
+  weeklyTitle:{color:"#1f2a44",fontSize:18,fontWeight:"700"},
+  weeklyHeading:{color:"#e8dcc8",fontSize:28,fontWeight:"700"},
+  weeklyContent:{padding:20,gap:12},
+  weeklySport:{flexDirection:"column",alignItems:"stretch",gap:6,marginBottom:0},
+  homeWeight:{color:"#e5c979",fontWeight:"600",fontVariant:["tabular-nums"],flexShrink:1,textAlign:"right"},
   homeAvatar:{width:34,height:34,borderRadius:17},
   homeTabs:{flexDirection:"row",justifyContent:"center",borderTopWidth:1,borderTopColor:"#e8dcc82a"},
   homeTab:{flex:1,minHeight:46,alignItems:"center",justifyContent:"center"},
