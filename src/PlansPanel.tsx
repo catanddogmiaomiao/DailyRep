@@ -87,7 +87,7 @@ export function PlansPanel({visible,plans,api,onChanged,onPlanSaved,onCheckin,co
         <Text style={p.muted}>{repeatLabel(plan.repeat)} · {plan.reminderEnabled?plan.reminderTime+" 提醒":"未设置提醒"}</Text>
         <Text style={p.muted}>连续完成 {progress.streak} 个训练日</Text>
         <View style={p.wrap}>
-          {canCheckIn&&!due&&button("记录训练",()=>onCheckin(plan.sport,plan.id),false,busy)}
+          {canCheckIn&&!due&&button("去打卡",()=>onCheckin(plan.sport,plan.id),false,busy)}
           {isActive&&button("调整安排",()=>setEditing(plan),false,busy)}
           {isActive&&!progress.ended&&button("暂停计划",()=>Alert.alert("暂停计划","暂停期间不发送提醒，恢复后结束日期会顺延。",[
             {text:"取消",style:"cancel"},{text:"暂停",onPress:()=>action(plan,{action:"pause"})},
