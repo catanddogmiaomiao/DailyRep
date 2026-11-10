@@ -1,4 +1,4 @@
-import {AccountScreen,AccountReset} from "./src/AccountScreen";
+import {AccountScreen,AccountReset,type Profile} from "./src/AccountScreen";
 import {FeedbackPressable as Pressable} from "./src/FeedbackPressable";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -17,6 +17,7 @@ import {
   KeyboardAvoidingView,
   AppState,
   Linking,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -28,7 +29,8 @@ import { File } from "expo-file-system";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { report, movePeriod } from "./src/stats";
-import {PlansPanel, PlanSummary} from "./src/PlansPanel";
+import {WeightScreen} from "./src/WeightCard";
+import {PlansPanel} from "./src/PlansPanel";
 import {dateInZone, isDue, matchesPlan, planProgress} from "./src/plans";
 import {syncReminders, restoreCachedReminders, clearDeviceReminders, syncWidgetSnapshot, clearWidgetSnapshot, listenToNotifications, lastNotification, playCheckinSuccess, playInteraction} from "./src/nativeReminders";
 import {SetEditor} from "./src/SetEditor";
@@ -83,12 +85,18 @@ function Fade() {
 }
 function App() {
   const photoInsets = useSafeAreaInsets();
+  const {width: screenWidth}=useWindowDimensions();
+  const homePager=useRef<ScrollView>(null);
+  const homeDestination=useRef<0|1>(0);
+  const profileRevision=useRef(0);
+  const [profile,setProfile]=useState<Profile|null>(null);
   const [token, setToken] = useState<string | null>(null),
     [initializing, setInitializing] = useState(true),
     [accountVisible,setAccountVisible] = useState(false),
+    [weightVisible,setWeightVisible] = useState(false),
     [records, setRecords] = useState<RecordItem[]>([]),
     [plans,setPlans] = useState<any[]>([]),
-    [plansVisible,setPlansVisible] = useState(false),
+    [homeScreen,setHomeScreen] = useState<0|1>(0),
     [initialPlanId,setInitialPlanId] = useState(""),
     [dataReady,setDataReady] = useState(false),
     [coverage,setCoverage] = useState<any>(null),
@@ -122,6 +130,22 @@ function App() {
   const generation = useRef(0);
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => { scrollRef.current?.scrollTo({y: 0, animated: false}); }, [page, token]);
+  useEffect(() => {
+    if(page==="home")homePager.current?.scrollTo({x:homeDestination.current*screenWidth,animated:false});
+  }, [page, screenWidth, token]);
+  function switchHomeScreen(next:0|1, animated=true) {
+    homeDestination.current=next;
+    setHomeScreen(next);
+    homePager.current?.scrollTo({x:next*screenWidth,animated});
+  }
+  function openPlans() {
+    setPage("home");
+    switchHomeScreen(1);
+  }
+  function updateProfile(next:Profile) {
+    profileRevision.current++;
+    setProfile(next);
+  }
   async function api(route: string, options: RequestInit = {}, auth = token) {
     if (!API) throw new Error("服务地址尚未配置，请更新到已连接服务的新版本");
     const controller = new AbortController();
@@ -151,13 +175,19 @@ function App() {
     await SecureStore.deleteItemAsync("dailyrep_token");
     setToken(null);
     setRecords([]);
-    setPlans([]);setDataReady(false);setPlansVisible(false);setAccountVisible(false);setForm(false);setPage("home");setError("");
+    setProfile(null);
+    switchHomeScreen(0,false);
+    setPlans([]);setDataReady(false);setAccountVisible(false);setWeightVisible(false);setForm(false);setPage("home");setError("");
     await Promise.all([clearDeviceReminders(),clearWidgetSnapshot()]);
     setPhoto(null);
   }
   async function refresh(auth = token, propagate = false) {
     const version = generation.current;
     setLoading(true);
+    const revision=profileRevision.current;
+    void api("/me",{},auth).then(data=>{
+      if(version===generation.current&&revision===profileRevision.current)setProfile(data);
+    }).catch(()=>{});
     try {
       const [rows, planRows] = await Promise.all([api("/records", {}, auth),api("/plans",{},auth)]);
       if (version === generation.current) {setRecords(rows);setPlans(planRows);setDataReady(true);}
@@ -171,10 +201,10 @@ function App() {
   const pendingLaunch=useRef<any>(null), routeHandler=useRef<(request:any)=>void>(()=>{});
   routeHandler.current=(request:any)=>{
     if(!token||!dataReady){pendingLaunch.current=request;return;}
-    if(request.plans){setPlansVisible(true);return;}
+    if(request.plans){openPlans();return;}
     if(!Object.hasOwn(sports,request.sport))return;
     const plan=plans.find(p=>p.id===request.planId);
-    if(request.planId&&(!plan||plan.status!=="active"||plan.progress.ended)){setPlansVisible(true);return;}
+    if(request.planId&&(!plan||plan.status!=="active"||plan.progress.ended)){openPlans();return;}
     go(request.sport as Sport);setInitialPlanId(request.planId||"");setForm(true);
   };
   useEffect(()=>{
@@ -200,7 +230,7 @@ function App() {
         const saved = await SecureStore.getItemAsync("dailyrep_token");
         if (saved) {
           await restoreCachedReminders();
-          await api("/me", {}, saved);
+          setProfile(await api("/me", {}, saved));
           setToken(saved);
           await refresh(saved);
         } else {
@@ -215,6 +245,7 @@ function App() {
     })();
   }, []);
   const go = (key: Sport | "home") => {
+    switchHomeScreen(0,false);
     setPage(key);setPlanFilter("");
     setSubtype("");
     setAnchor(new Date());
@@ -251,14 +282,14 @@ function App() {
     );
   const selected = page === "home" ? null : sports[page],
     stat = page === "home" ? null : report(records.filter(r=>matchesPlan(r,planFilter)), page, period, anchor, subtype);
-  return (
-    <SafeAreaView style={s.container} edges={["top", "bottom"]}>
-      <StatusBar style="light" />
+  const dashboard=(
       <ScrollView
         ref={scrollRef}
         scrollEnabled={scrollEnabled}
         directionalLockEnabled
         onScrollBeginDrag={() => {if(!swipeActive.current)setOpenRecordId(null);}}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={page==="home"}
         contentContainerStyle={s.content}
         refreshControl={
           <RefreshControl
@@ -303,7 +334,8 @@ function App() {
               hitSlop={8}
               style={s.iconBtn}
             >
-              <Ionicons name="person-circle-outline" size={22} color="#e8dcc8" />
+              {profile?.avatarImage ? <Image source={{uri:"data:image/jpeg;base64,"+profile.avatarImage}} style={s.homeAvatar}/> :
+                <Ionicons name="person-circle-outline" size={22} color="#e8dcc8" />}
             </Pressable>
           </View>
           <Text style={s.eyebrow}>MAKE EVERY DAY COUNT</Text>
@@ -346,6 +378,15 @@ function App() {
               </View>
               <Text style={s.darkHint}>把今天的努力，留给未来的自己。</Text>
             </View>
+            <Pressable accessibilityRole="button" style={[s.record,{marginTop:16,minHeight:56}]} onPress={()=>setWeightVisible(true)}>
+              <View style={s.row}>
+                <View style={{flexDirection:"row",gap:10,alignItems:"center"}}>
+                  <Ionicons name="trending-up-outline" size={22} color="#c6a75e"/>
+                  <Text style={s.tabText}>体重记录</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#a9b4c6"/>
+              </View>
+            </Pressable>
             <Text style={s.sectionTitle}>选择今天的运动</Text>
             <View style={s.sportGrid}>
               {(Object.keys(sports) as Sport[]).map((key) => {
@@ -378,11 +419,6 @@ function App() {
                 );
               })}
             </View>
-            <View style={{marginBottom:20,gap:12}}>
-              <View style={s.row}><Text style={s.sectionTitle}>长期计划</Text><Pressable accessibilityRole="button" style={s.textAction} onPress={()=>setPlansVisible(true)}><Text style={{color:'#c6a75e'}}>管理计划</Text></Pressable></View>
-              {plans.filter(p=>p.status==='active'||p.status==='paused').map(plan=><PlanSummary key={plan.id} plan={plan} onPress={()=>setPlansVisible(true)}/>)}
-              {!plans.some(p=>p.status==='active'||p.status==='paused')&&<Pressable style={s.record} accessibilityRole="button" onPress={()=>setPlansVisible(true)}><Text style={s.tabText}>设置一个100天目标，也可以继续自由打卡 →</Text></Pressable>}
-            </View>
             <Text style={s.footer}>私人空间 · 记录只属于你</Text>
           </>
         ) : (
@@ -399,7 +435,7 @@ function App() {
                   <CategoryPicker options={[{value: "", label: "全部类型"}, ...subtypeOptions(page), {value: "unclassified", label: "未分类（旧记录）"}]} value={subtype} onChange={setSubtype} />
                 </View>
               )}
-              <Pressable accessibilityRole="button" style={[s.row,{minHeight:48,marginTop:8}]} onPress={()=>setPlansVisible(true)}><Text style={s.small}>{plans.find(p=>p.sport===page&&(p.status==='active'||p.status==='paused'))?.title||'未设长期计划 · 自由打卡也很好'}</Text><Text style={{color:'#c6a75e'}}>管理计划 →</Text></Pressable>
+              <Pressable accessibilityRole="button" style={[s.row,{minHeight:48,marginTop:8}]} onPress={openPlans}><Text style={s.small}>{plans.find(p=>p.sport===page&&(p.status==='active'||p.status==='paused'))?.title||'未设长期计划 · 自由打卡也很好'}</Text><Text style={{color:'#c6a75e'}}>管理计划 →</Text></Pressable>
               <View style={s.tabs}>
                 {(["week", "month", "year"] as Period[]).map((p, i) => (
                   <Pressable
@@ -549,6 +585,37 @@ function App() {
           )
         )}
       </ScrollView>
+  );
+  return (
+    <SafeAreaView style={s.container} edges={["top", "bottom"]}>
+      <StatusBar style="light" />
+      {page==="home" ? <>
+        <ScrollView ref={homePager} horizontal pagingEnabled directionalLockEnabled bounces={false}
+          style={{flex:1}} keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={({nativeEvent})=>{
+            const next=nativeEvent.contentOffset.x>=screenWidth/2?1:0;
+            homeDestination.current=next;setHomeScreen(next);
+          }}>
+          <View style={{width:screenWidth}} accessibilityElementsHidden={homeScreen!==0} importantForAccessibility={homeScreen===0?"auto":"no-hide-descendants"}>
+            {dashboard}
+          </View>
+          <View style={{width:screenWidth,paddingLeft:photoInsets.left,paddingRight:photoInsets.right}} accessibilityElementsHidden={homeScreen!==1} importantForAccessibility={homeScreen===1?"auto":"no-hide-descendants"}>
+            <PlansPanel visible={homeScreen===1} plans={plans} api={api}
+              onChanged={async()=>{await refresh(token,true);}}
+              onPlanSaved={saved=>setPlans(previous=>[{...saved,progress:planProgress(saved,records)},...previous.filter(p=>p.id!==saved.id)])}
+              coverage={coverage}
+              onCheckin={(sport,planId)=>{go(sport as Sport);setInitialPlanId(planId);setForm(true);}}/>
+          </View>
+        </ScrollView>
+        <View style={s.homeTabs} accessibilityRole="tablist">
+          <Pressable accessibilityRole="tab" accessibilityState={{selected:homeScreen===0}} style={s.homeTab} onPress={()=>switchHomeScreen(0)}>
+            <Text style={homeScreen===0?s.homeTabActive:s.small}>首页</Text>
+          </Pressable>
+          <Pressable accessibilityRole="tab" accessibilityState={{selected:homeScreen===1}} style={s.homeTab} onPress={()=>switchHomeScreen(1)}>
+            <Text style={homeScreen===1?s.homeTabActive:s.small}>长期计划 ›</Text>
+          </Pressable>
+        </View>
+      </> : dashboard}
       {form && page !== "home" && (
         <Checkin
           sport={page}
@@ -566,8 +633,8 @@ function App() {
           }}
         />
       )}
-      {accountVisible&&<AccountScreen api={api} onClose={()=>setAccountVisible(false)} onSignedOut={clear}/>}
-      <PlansPanel visible={plansVisible} plans={plans} api={api} onChanged={async()=>{await refresh(token,true);}} onPlanSaved={saved=>setPlans(previous=>[{...saved,progress:planProgress(saved,records)},...previous.filter(p=>p.id!==saved.id)])} onClose={()=>setPlansVisible(false)} coverage={coverage} onCheckin={(sport,planId)=>{setPlansVisible(false);go(sport as Sport);setInitialPlanId(planId);setForm(true);}}/>
+      {weightVisible&&<WeightScreen api={api} onClose={()=>setWeightVisible(false)}/>}
+      {accountVisible&&<AccountScreen api={api} onClose={()=>setAccountVisible(false)} onSignedOut={clear} onProfile={updateProfile}/>}
       <Modal
         visible={!!photo}
         transparent
@@ -1377,6 +1444,10 @@ const s = StyleSheet.create({
     gap: 10,
     alignItems: "center",
   },
+  homeAvatar:{width:34,height:34,borderRadius:17},
+  homeTabs:{flexDirection:"row",justifyContent:"center",borderTopWidth:1,borderTopColor:"#e8dcc82a"},
+  homeTab:{flex:1,minHeight:46,alignItems:"center",justifyContent:"center"},
+  homeTabActive:{color:"#c6a75e",fontWeight:"700"},
   photoModal: { flex: 1, backgroundColor: "#080f1d" },
   photoClose: { alignSelf: "flex-end", marginTop: 8, marginRight: 16, marginBottom: 8 },
 });

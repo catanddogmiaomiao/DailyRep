@@ -1,11 +1,13 @@
 import React,{useEffect,useState} from 'react';
-import {ActivityIndicator,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,Share,StyleSheet,Text,TextInput,View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {ActivityIndicator,Image,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,Share,StyleSheet,Text,TextInput,View} from 'react-native';
+import {SafeAreaView,useSafeAreaInsets} from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import {ImageManipulator,SaveFormat} from 'expo-image-manipulator';
 import {Ionicons} from '@expo/vector-icons';
 import {playInteraction} from './nativeReminders';
 
 type Api=(route:string,options?:RequestInit)=>Promise<any>;
-export type Profile={email:string;nickname?:string;avatar?:string;emailVerified?:boolean;emailAvailable?:boolean;hasRecoveryCode?:boolean};
+export type Profile={email:string;nickname?:string;avatar?:string;avatarImage?:string|null;emailVerified?:boolean;emailAvailable?:boolean;hasRecoveryCode?:boolean};
 type Session={id:string;device:string;createdAt:number|null;current:boolean};
 const avatars={wave:'🌊',sun:'☀️',mountain:'⛰️',bolt:'⚡'};
 const avatarNames={wave:'海浪',sun:'太阳',mountain:'山峰',bolt:'闪电'};
@@ -37,13 +39,14 @@ function checkPassword(password:string,confirm:string){
   if(password.length<8)throw new Error('新密码至少需要8位');
   if(password!==confirm)throw new Error('两次输入的密码不一致');
 }
-export function AccountScreen({api,onClose,onSignedOut}:{api:Api;onClose:()=>void;onSignedOut:()=>Promise<void>}){
+export function AccountScreen({api,onClose,onSignedOut,onProfile}:{api:Api;onClose:()=>void;onSignedOut:()=>Promise<void>;onProfile:(profile:Profile)=>void}){
+  const insets=useSafeAreaInsets();
   const [profile,setProfile]=useState<Profile|null>(null),[panel,setPanel]=useState<Section|''>('');
   const [sessions,setSessions]=useState<Session[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
   const [nickname,setNickname]=useState(''),[avatar,setAvatar]=useState<Avatar>('wave');
   const [current,setCurrent]=useState(''),[password,setPassword]=useState(''),[confirm,setConfirm]=useState('');
   const [email,setEmail]=useState(''),[target,setTarget]=useState(''),[code,setCode]=useState(''),[recovery,setRecovery]=useState('');
-  function update(data:Profile){setProfile(data);}
+  function update(data:Profile){setProfile(data);onProfile(data);}
   async function run(work:()=>Promise<void>,sound=true){
     if(busy)return;
     setBusy(true);setError('');setNotice('');
@@ -58,18 +61,42 @@ export function AccountScreen({api,onClose,onSignedOut}:{api:Api;onClose:()=>voi
     setNickname(profile?.nickname||'');setAvatar((profile?.avatar as Avatar)||'wave');setEmail(next==='delete'?'':profile?.email||'');
     if(next==='sessions')void run(async()=>setSessions(await api('/account/sessions')),false);
   }
+  async function uploadAvatar() {
+    const picked=await ImagePicker.launchImageLibraryAsync({
+      mediaTypes:["images"],allowsEditing:true,aspect:[1,1],
+    });
+    if(picked.canceled)return;
+    const image=ImageManipulator.manipulate(picked.assets[0].uri);
+    image.resize({width:240});
+    const rendered=await image.renderAsync();
+    const result=await rendered.saveAsync({format:SaveFormat.JPEG,compress:0.75,base64:true});
+    if(!result.base64)throw new Error("无法读取这张照片，请重新选择。");
+    update(await send(api,"/account/avatar",{image:result.base64}));
+    setNotice("头像已更新。");
+  }
   const currentField=<Field label="当前密码" value={current} change={setCurrent} type="current-password" editable={!busy}/>;
   const newFields=<><Field label="新密码（至少8位）" value={password} change={setPassword} type="new-password" editable={!busy}/><Field label="确认新密码" value={confirm} change={setConfirm} type="new-password" editable={!busy}/></>;
   const revoke=(id:string)=>void run(async()=>{await send(api,'/account/sessions/revoke',{id});setSessions(await api('/account/sessions'));setNotice('已退出所选设备。');});
   return <Modal animationType="slide" presentationStyle="fullScreen" onRequestClose={()=>{if(!busy)onClose();}}>
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.top}><Text style={styles.title}>账号管理</Text><Pressable accessibilityRole="button" accessibilityLabel="关闭账号管理" hitSlop={8} onPress={onClose} disabled={busy} style={styles.close}><Ionicons name="close" size={26} color={c.cream}/></Pressable></View>
+    {/* Apply the app window's insets on the first frame of the native modal. */}
+    <View style={[styles.safe,{
+      paddingTop:insets.top,
+      paddingBottom:insets.bottom,
+      paddingLeft:insets.left,
+      paddingRight:insets.right,
+    }]}>
+      <View style={styles.top}><Text style={styles.title}>账号管理</Text><Pressable accessibilityRole="button" accessibilityLabel="关闭账号管理" onPress={onClose} disabled={busy} style={styles.close}><Ionicons name="close" size={26} color={c.cream}/></Pressable></View>
       <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
-        {!!profile&&<View style={styles.profile}><Text style={styles.avatar}>{avatars[profile.avatar as Avatar]||avatars.wave}</Text><View style={{flex:1}}><Text style={styles.heading}>{profile.nickname||'我的账号'}</Text><Text style={styles.label}>{profile.email}</Text><Text style={styles.muted}>{profile.emailVerified?'邮箱已验证':'邮箱未验证'}</Text></View></View>}
+        {!!profile&&<View style={styles.profile}>{profile.avatarImage?<Image accessibilityIgnoresInvertColors source={{uri:"data:image/jpeg;base64,"+profile.avatarImage}} style={styles.uploadedAvatar}/>:<Text style={styles.avatar}>{avatars[profile.avatar as Avatar]||avatars.wave}</Text>}<View style={{flex:1}}><Text style={styles.heading}>{profile.nickname||'我的账号'}</Text><Text style={styles.label}>{profile.email}</Text><Text style={styles.muted}>{profile.emailVerified?'邮箱已验证':'邮箱未验证'}</Text></View></View>}
         {!panel&&profile&&<>{(Object.keys(sections) as Section[]).map(key=><Button key={key} title={sections[key]} busy={busy} onPress={()=>open(key)}/>)}<Button title="退出登录" busy={busy} onPress={()=>void run(async()=>{await send(api,'/logout');await onSignedOut();},false)}/></>}
         {!!panel&&<><Button title="‹ 返回账号管理" busy={busy} onPress={()=>open('')}/><Text style={styles.heading}>{sections[panel]}</Text></>}
         {panel==='profile'&&<><Field label="昵称（可留空）" value={nickname} change={setNickname} maxLength={24} editable={!busy}/>
+          <Button title="从相册上传头像" busy={busy} onPress={()=>void run(uploadAvatar,false)}/>
+          {profile?.avatarImage&&<Button title="移除上传的头像" busy={busy} onPress={()=>void run(async()=>{
+            update(await send(api,"/account/avatar",{image:null}));setNotice("已恢复预设头像。");
+          })}/>}
+          {profile?.avatarImage&&<Text style={styles.muted}>移除照片后会显示预设头像。</Text>}
           <View style={styles.avatarRow}>{(Object.keys(avatars) as Avatar[]).map(key=><Pressable accessibilityLabel={avatarNames[key]} accessibilityRole="button" accessibilityState={{selected:avatar===key}} key={key} disabled={busy} onPress={()=>setAvatar(key)} style={[styles.avatarChoice,avatar===key&&{borderColor:c.gold}]}><Text style={{fontSize:24}}>{avatars[key]}</Text></Pressable>)}</View>
           <Button title="保存资料" tone="gold" busy={busy} onPress={()=>void run(async()=>{update(await send(api,'/account/profile',{nickname,avatar}));setNotice('资料已保存。');})}/></>}
         {panel==='password'&&<><Text style={styles.muted}>修改后，其他设备需要重新登录。</Text>{currentField}{newFields}
@@ -93,7 +120,7 @@ export function AccountScreen({api,onClose,onSignedOut}:{api:Api;onClose:()=>voi
         {!profile&&!busy&&<Button title="重试" onPress={()=>void load()}/>}
       </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   </Modal>;
 }
 export function AccountReset({api,initialEmail,emailAvailable,onBack,onDone}:{api:Api;initialEmail:string;emailAvailable:boolean;onBack:()=>void;onDone:()=>void}){
@@ -122,6 +149,7 @@ const styles=StyleSheet.create({
   button:{minHeight:48,padding:12,justifyContent:'center',alignItems:'center',borderRadius:12,borderWidth:1,borderColor:'#e8dcc849'},
   buttonText:{fontWeight:'600',fontSize:16,color:c.cream},gold:{backgroundColor:c.gold,borderColor:c.gold},danger:{borderColor:c.red},
   error:{color:c.red,lineHeight:23},notice:{color:c.gold,lineHeight:23},profile:{flexDirection:'row',gap:14,alignItems:'center',paddingBottom:8},
+  uploadedAvatar:{width:56,height:56,borderRadius:28},
   avatar:{fontSize:27,padding:12,backgroundColor:c.panel,borderRadius:14},avatarRow:{flexDirection:'row',gap:10},avatarChoice:{borderWidth:1,borderColor:c.panel,backgroundColor:c.panel,borderRadius:12,width:48,height:48,alignItems:'center',justifyContent:'center'},
   device:{flexDirection:'row',gap:10,alignItems:'center',backgroundColor:c.panel,padding:12,borderRadius:12},
   code:{fontFamily:'Menlo',fontSize:16,lineHeight:24,padding:12,backgroundColor:c.panel,color:c.cream,borderRadius:12},
